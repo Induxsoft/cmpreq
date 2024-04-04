@@ -1,0 +1,16 @@
+#include "dkli.dkh"
+#!
+module
+{
+	if not(isset("@http_context")) { ref @http_context = @@(@crud_context,"&http") }
+
+	//* ======================================== [ CONSTANTS ]
+	@default_max_rows = 250
+
+	//* ======================================== [ _STATIC RESOURCES ]
+	@JS_REQUISICIONES = "/$/cmpreq/js/requisiciones.js"
+
+	//* ======================================== [ _PACKAGE ]
+
+	//* ======================================== [ AUTHORIZATIONS ]
+}

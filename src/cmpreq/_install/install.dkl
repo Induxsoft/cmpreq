@@ -1,0 +1,21 @@
+#include "dkli.dkh"
+#!
+program "instalador"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "dbr.dkh"
+
+    // Archivos de datos iniciales (Orden de importación)
+    // deben estar en la carpeta _install/initial_data
+
+    ref @files_to_import = from.json('[
+        "cmpreq_status.csv"
+    ]')
+
+    // Lista de privilegios iniciales (arreglo de id de privilegios)
+    ref @permissions_to_import = from.json('[]')
+    
+    /*************************************************************************************/
+    #include "v12.install.lib.dk"
+}

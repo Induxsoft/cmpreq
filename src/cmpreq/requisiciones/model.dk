@@ -1,0 +1,50 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    @table_name = "cmpreq"
+
+    @list_query = "
+    SELECT
+        req.sys_pk,
+        req.sys_guid,
+        req.referencia,
+        DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
+        IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
+        CONCAT('$',FORMAT(req.subtotal,4)) AS subtotal,
+        CONCAT('$',FORMAT(req.impuestos,4)) AS impuestos,
+        IF(req.consolidacion,'Si','No') AS consolidacion,
+        IFNULL(con.referencia,'') AS consolidadoen,
+        IFNULL(pda.partida,'') AS partida,
+        stt.const AS `status`,
+        dvs.codigo AS `divisa`
+    FROM #<@table_name> AS req
+        LEFT JOIN #<@table_name> AS con ON con.sys_pk = req.en
+        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
+        INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
+        INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
+    WHERE NOT IFNULL(req.sys_deleted,0)
+    LIMIT #<@default_max_rows>
+    "
+
+    prepareView::&db,&params,&data
+    {
+        if @@(params,"$_operation") == "list"
+        {
+            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
+        }
+    }
+
+    req.list::&db,&params
+    {
+        new data
+        {
+            @"requisiciones*": entity.list(db,params)
+        }
+        do prepareView(db,params,data)
+
+        return data
+    }
+
+    point @list to req.list
+}

@@ -1,0 +1,206 @@
+#include "dkli.dkh"
+#!
+module "list.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+
+    do @context.begin(@crud_context)
+
+    ref @_GET = ifnull(@("&parameters"),record.create())
+    ref requisiciones = ifnull(@("&./requisiciones"),list.create())
+    ref list_status = ifnull(@("&./list_status"),list.create())
+
+	@_entities_type = @("$parameters/_entities_type")
+	table_id = "tbl_"+@_entities_type
+
+    curr_ndt = ndatetime.now()
+    curr_year = ndatetime.year(curr_ndt)
+    curr_month = ndatetime.month(curr_ndt)
+    curr_day = ndatetime.day(curr_ndt)
+
+    fdr_year_opt = ""
+    for i = 2024; i <= curr_year { fdr_year_opt = fdr_year_opt + str(i) + "," }
+    fdr_year_opt = rremove(fdr_year_opt,1)
+
+    new fdr_init
+    {
+        @"fdr_mode": field.dstr(@_GET,"fdr_mode","month")
+        // [month]
+        @"fdr_year": field.dnum(@_GET,"fdr_year",curr_year)
+        @"fdr_month": field.dnum(@_GET,"fdr_month",curr_month)
+        // [lastdays]
+        @"fdr_range": field.dnum(@_GET,"fdr_range",30)
+        // [range]
+        @"fdr_from": field.dstr(@_GET,"fdr_from","")
+        @"fdr_to": field.dstr(@_GET,"fdr_to","")
+    }
+
+    new fil_status
+    {
+        @"datatable*": list_status
+        @"id": "fil_status"
+        member "attributes"
+        {
+            @"name": "fil_status"
+            @"class": "induxsoft-form-select"
+            @"title": "Filtrar por estados"
+            @"onchange": "document.querySelector('#form_filter').submit();"
+        }
+        @"value_field": "id"
+        @"text_field": "const"
+        @"first_value": "*"
+        @"first_text": "(Todos los estados)"
+        @"selected": @("parameters/fil_status")
+    }
+
+    new fil_fdr_field
+    {
+        @"datatable*": from.json('[
+            {"id":10, "const":"Elaboración"},
+            {"id":20, "const":"Vencimiento"},
+        ]')
+        @"id": "fil_fdr_field"
+        member "attributes"
+        {
+            @"name": "fil_fdr_field"
+            @"class": "induxsoft-form-select"
+            @"title": "Elegir método de filtro para el rango de fechas"
+            @"onchange": "document.querySelector('#form_filter').submit();"
+        }
+        @"value_field": "id"
+        @"text_field": "const"
+        @"selected": @("#parameters/fil_fdr_field")
+    }
+
+    new table_definition
+    {
+        @"datatable*": requisiciones
+        @"table_footer": "Mostrando los primeros # registros"
+        member @"columns"
+        {
+            member @"referencia" { @"caption":"Referencia" }
+            member @"partida" { @"caption":"Partida" }
+			member @"fecha" { @"caption": "Elaboración" }
+            member @"flimite" { @"caption": "Vencimiento" }
+            member @"divisa" { @"caption": "Divisa" }
+            member @"subtotal" { @"caption": "Subtotal" }
+            member @"impuestos" { @"caption": "Impuestos" }
+            member @"status" { @"caption": "Estado" }
+            member @"consolidacion" { @"caption": "Consolidación" }
+            member @"consolidadoen" { @"caption": "Consolidado En" }
+
+            member @"_actions" 
+            { 
+                @"caption":"Acciones" 
+                @"template":ftext('
+                    <div style="display:flex;gap:8px;justify-content:center;width:100%;" class="no-print">
+                        <a href="./${DataRow.sys_pk}/" style="cursor:pointer; text-decoration: none; padding: 0px 8px; background-color: #F5F5F5; color: #000;">Editar</a>
+                        <button onclick="InduxsoftCrudlModel.Delete(${DataRow.sys_pk})" style="cursor:pointer; border: none; outline: none; padding: 0px 8px; background-color: #F5F5F5; color: #000;">Eliminar</button>
+                    </div>')
+                @"no-print":@true
+            }
+        }
+    }
+
+    header_act::
+    {
+        #$
+        a(href="./_new/" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Agregar"}
+        #!
+    }
+
+    point general_act to header_act
+
+    new nav_config
+    {
+        @"title": "Requisiciones"
+        @"buttons*": general_act
+        @"urlexit": "/"
+        // @"actions*": dbr.apps.itemactions(@('&database'),"alimento","action","",0)
+        // @"reports*": dbr.apps.itemactions(@('&database'),"alimento","report","",0)
+        @"jscurrentcontext": "requisiciones.list.getCurrentContext"
+    }
+
+    #$
+    div(class="container-fluid p-0")
+    {
+        #! do uie.printV12FormBar(nav_config)
+
+        #$ div(id="work_area" class="container-section p-2 pt-0")
+        {
+            p{$"#<@('$error/message')>"}
+
+            form(action="./" method="GET" id="form_filter" class="no-print mb-2")
+            {
+                div(class="py-1 w-100 d-flex gap-2 flex-wrap align-items-center")
+                {
+                    div(class="d-flex gap-2")
+                    {
+                        div{ #! do uie.dbSelect(fil_status) } #$
+                    }
+                    div(class="flex-grow-1")
+                    {
+                        "filter-text"(
+                            "id"="fil_text"
+                            "text-field"="fil_text"
+                            "placeholder"="Buscar ..."
+                            "form"="#form_filter"
+                            "value"="#<@@(@@(@crud_context,'&http/request/get'),'$fil_text')>"
+                            "auto-submit"="true"
+                            "class"="w-100"
+                        ){$""}
+                    }
+                }
+                div(class="d-flex align-items-center")
+                {
+                    div
+                    {
+                        ##
+                        do uie.dbSelect(fil_fdr_field)
+                        ##
+                    }
+                    div(class="flex-grow-1")
+                    {
+                        "filter-date-range"(
+                            "form"="#form_filter"
+                            "auto-submit"="true"
+                            "custom-range"="true"
+                            "selection"='#<to.json(fdr_init)>'
+
+                            "mode-field"="fdr_mode"
+                            "year-field"="fdr_year"
+                            "month-field"="fdr_month"
+                            "range-field"="fdr_range"
+                            "from-field"="fdr_from"
+                            "to-field"="fdr_to"
+                            
+                            "lastdays-options"="15,30,45,60,90"
+                            "years-options"="#<fdr_year_opt>"
+                            "month-names"="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"
+                            
+                            "label-months"="Ver por cada mes"
+                            "label-days"="Últ. @lastdays días"
+                            "label-custom"="Personalizado"
+                            "label-from"="Desde:"
+                            "label-to"="Hasta:"
+                        ){$""}
+                    }
+                }
+            }
+            #! do uie.dbeditable(table_definition,table_id)
+        }
+
+		#$
+        script(src="#<@JS_REQUISICIONES>"){$""}
+		script(type="text/javascript")
+		{$'
+            document.addEventListener("DOMContentLoaded", () => {
+                requisiciones.list.tableId = "#<table_id>";
+                requisiciones.list.init();
+            });
+		'}
+    }
+}
