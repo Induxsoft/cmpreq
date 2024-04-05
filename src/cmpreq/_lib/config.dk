@@ -6,11 +6,14 @@ module
 
 	//* ======================================== [ CONSTANTS ]
 	@default_max_rows = 250
+	@cRequisicion = 70
 
 	//* ======================================== [ _STATIC RESOURCES ]
 	@JS_REQUISICIONES = "/$/cmpreq/js/requisiciones.js"
 
 	//* ======================================== [ _PACKAGE ]
+	@URL_BUSCAR_UNIDAD_ORG = "/!/cmpreq/requisiciones/?_view=buscar-unidad-org&search=@search"
+	@URL_BUSCAR_PARTIDA_PRE = "/!/cmpreq/requisiciones/?_view=buscar-partida-pre&search=@search"
 
 	//* ======================================== [ AUTHORIZATIONS ]
 }

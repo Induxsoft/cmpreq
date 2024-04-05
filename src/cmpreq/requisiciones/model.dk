@@ -3,6 +3,10 @@
 module ""
 {
     @table_name = "cmpreq"
+    @create_fields = "fecha,flimite,partida,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
+    @update_fields = "sys_timestamp,sys_lastuser,sys_recver,sys_deleted,sys_lock,"+@create_fields
+    @create_exclude_fields = ""
+    @update_exclude_fields = ""
 
     @list_query = "
     SELECT
@@ -27,12 +31,82 @@ module ""
     LIMIT #<@default_max_rows>
     "
 
+    buscarUnidad::&db,&params
+    {
+        sql = "
+        SELECT
+            sys_pk,
+            sys_guid,
+            codigo,
+            descripcion
+        FROM rh_unidad_org
+        WHERE #<condition>
+        "
+        if trim(@@(params,"$id")) != ""
+        {
+            condition = "(sys_pk = @id OR sys_guid = @id)"
+            return dbr.rec(db,ftext(sql),params)
+        }
+        if trim(@@(params,"$search")) != ""
+        {
+            condition = "(codigo LIKE CONCAT('%',@search,'%') OR descripcion LIKE CONCAT('%',@search,'%'))"
+            return dbr.list(db,ftext(sql),params)
+        }
+        return list.create()
+    }
+
+    buscarPartida::&db,&params
+    {
+        sql = "
+        SELECT
+            sys_pk,
+            sys_guid,
+            id,
+            partida
+        FROM gop_partida
+        WHERE #<condition>
+        "
+        if trim(@@(params,"$id")) != ""
+        {
+            condition = "(sys_pk = @id OR sys_guid = @id)"
+            return dbr.rec(db,ftext(sql),params)
+        }
+        if trim(@@(params,"$search")) != ""
+        {
+            condition = "(id LIKE CONCAT('%',@search,'%') OR partida LIKE CONCAT('%',@search,'%'))"
+            return dbr.list(db,ftext(sql),params)
+        }
+        return list.create()
+    }
+
+    obtenerUnidad::&db,id
+    {
+        new params { @"id": id }
+        return buscarUnidad(db,params)
+    }
+
+    obtenerPartida::&db,id
+    {
+        new params { @"id": id }
+        return buscarPartida(db,params)
+    }
+
+    obtenerFultimo::&db,&params
+    {
+        new data { @"fultimo": dbr.folios.get_new(db,@@(params,"#_entity_id")) }
+        return data
+    }
+
+    prepareList::&db,&params,&data
+    {
+        data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
+    }
+
     prepareView::&db,&params,&data
     {
-        if @@(params,"$_operation") == "list"
-        {
-            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
-        }
+        data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = 70",@null)
+        data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
+        data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
     }
 
     req.list::&db,&params
@@ -41,10 +115,24 @@ module ""
         {
             @"requisiciones*": entity.list(db,params)
         }
+        do prepareList(db,params,data)
+
+        return data
+    }
+
+    req.read::&db,&params
+    {
+        new data {}
         do prepareView(db,params,data)
 
         return data
     }
 
-    point @list to req.list
+    req.blank::&db,&params
+    {
+        new data {}
+        do prepareView(db,params,data)
+
+        return data
+    }
 }

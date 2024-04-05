@@ -88,9 +88,8 @@ module "list.dk"
             member @"divisa" { @"caption": "Divisa" }
             member @"subtotal" { @"caption": "Subtotal" }
             member @"impuestos" { @"caption": "Impuestos" }
+            member @"total" { @"caption": "Total" }
             member @"status" { @"caption": "Estado" }
-            member @"consolidacion" { @"caption": "Consolidación" }
-            member @"consolidadoen" { @"caption": "Consolidado En" }
 
             member @"_actions" 
             { 

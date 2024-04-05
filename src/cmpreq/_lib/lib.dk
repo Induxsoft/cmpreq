@@ -29,6 +29,22 @@ module "Funciones de propósito general:lib"
         }
     }
 
+    function list_years(yearsBack,yearsForward)
+    {
+        ndt = ndatetime.now()
+        yearFrom = ndatetime.add(ndt, ((yearsBack + 1) * -1), "y")
+        
+        ref list = list.create()
+        date = yearFrom
+
+        for i = 1; i < yearsBack + (yearsForward + 2)
+        {
+            date = ndatetime.add(date,1,'y')
+            do list.add(list, ndatetime.year(date))
+        }
+        return list
+    }
+
     function form(name,type,&obj)
     {
         name = trim(str(name))
@@ -72,6 +88,14 @@ module "Funciones de propósito general:lib"
                 if fecha == "" { fecha = trim(@("$input/"+name)) }
                 if fecha == "" { fecha = trim(@@(obj,"$"+name)) }
                 if fecha == "" { fecha = date_str(now(),"yyyy-MM-dd") }
+                return fecha
+            }
+            case "dtm"
+            {
+                fecha = trim(@("$./form/"+name))
+                if fecha == "" { fecha = trim(@("$input/"+name)) }
+                if fecha == "" { fecha = trim(@@(obj,"$"+name)) }
+                if fecha == "" { fecha = date_str(now(),"yyyy-MM-dd HH:mm:ss") }
                 return fecha
             }
             default { return "" }

@@ -36,6 +36,10 @@ var requisiciones =
     form: {
         init()
         {
+            const btn_get_folio = document.getElementById("btn_get_folio");
+
+            if (btn_get_folio) btn_get_folio.addEventListener("click", (event) => { this.getFolio() });
+
             this.setKeyboardShortcuts();
         },
 
@@ -52,6 +56,12 @@ var requisiciones =
                     window.location.reload();
                 }
             });
+        },
+
+        getFolio()
+        {
+            fetch("/!/cmpreq/requisiciones/16/obtener-fultimo").then(response => response.json())
+            .then(data => console.log(data))
         },
     }
 }

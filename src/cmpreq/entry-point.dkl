@@ -6,6 +6,7 @@ module "Controller configs"
 	#include "serialize.dkh"
 	#include "dbr.dkh"
 	#include "crudl/crudl.dk"
+	#include "dbr.folios.dkl"
 	#include "_lib/config.dk"
 	#include "_lib/lib.dk"
 

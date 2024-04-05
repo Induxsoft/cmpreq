@@ -1,0 +1,33 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    switch @@(@http_context,"$request/get/_view")
+    {
+        case "buscar-unidad-org"
+        {
+            point @list to buscarUnidad
+            break
+        }
+        case "buscar-partida-pre"
+        {
+            point @list to buscarPartida
+            break
+        }
+        case "obtener-fultimo"
+        {
+            point @read to obtenerFultimo
+            break
+        }
+        default
+        {
+            if @@(@http_context,"$request/get/_entity_id") == "_new" { @form_view = "form.new.dk" }
+            if @@(@http_context,"$request/get/_entity_id") == "_edt" { @form_view = "form.edt.dk" }
+
+            point @list to req.list
+            point @read to req.read
+            point @blank to req.blank
+            break
+        }
+    }
+}
