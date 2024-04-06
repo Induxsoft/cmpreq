@@ -21,12 +21,14 @@ module ""
         }
         default
         {
-            if @@(@http_context,"$request/get/_entity_id") == "_new" { @form_view = "form.new.dk" }
-            if @@(@http_context,"$request/get/_entity_id") == "_edt" { @form_view = "form.edt.dk" }
+            @form_view = "form.new.dk"
+            
+            if @@(@http_context,"$request/get/_entity_id") != "_new" { @form_view = "form.edt.dk" }
 
             point @list to req.list
             point @read to req.read
             point @blank to req.blank
+            point @create to req.create
             break
         }
     }

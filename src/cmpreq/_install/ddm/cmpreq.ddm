@@ -710,7 +710,7 @@ model "erp.requisiciones"
         @"referencia" string(32) unique required
         @"folio" ref:"foliosdocumentos" unique required
         @"ucreo" ref:"tuser" required // Id del usuario que creó la requisición
-        @"uaprobo" ref:"tuser" required // Id del usuario que aprobó la requisición
+        @"uaprobo" ref:"tuser" // Id del usuario que aprobó la requisición
         @"status" ref:"cmpreq_status" required
         @"notas" memo
         @"consolidacion" bool // Es una consolidación (no debe tener detalle)

@@ -3,10 +3,12 @@
 module ""
 {
     @table_name = "cmpreq"
-    @create_fields = "fecha,flimite,partida,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
-    @update_fields = "sys_timestamp,sys_lastuser,sys_recver,sys_deleted,sys_lock,"+@create_fields
-    @create_exclude_fields = ""
-    @update_exclude_fields = ""
+    @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
+
+    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
+    @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
+    @create_exclude_fields = "sys_lastuser"
+    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user"
 
     @list_query = "
     SELECT
@@ -17,6 +19,7 @@ module ""
         IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
         CONCAT('$',FORMAT(req.subtotal,4)) AS subtotal,
         CONCAT('$',FORMAT(req.impuestos,4)) AS impuestos,
+        CONCAT('$',FORMAT((req.subtotal + req.impuestos),4)) AS total,
         IF(req.consolidacion,'Si','No') AS consolidacion,
         IFNULL(con.referencia,'') AS consolidadoen,
         IFNULL(pda.partida,'') AS partida,
@@ -29,6 +32,35 @@ module ""
         INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
     WHERE NOT IFNULL(req.sys_deleted,0)
     LIMIT #<@default_max_rows>
+    "
+
+    @read_query = "
+    SELECT
+        req.sys_pk,
+        req.sys_guid,
+        req.sys_recver,
+        req.referencia,
+        DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
+        IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
+        req.subtotal,
+        req.impuestos,
+        req.periodo,
+        req.tcambio,
+        req.`status`,
+        IFNULL(req.notas,'') AS notas,
+        IFNULL(pda.partida,'') AS partida_pre,
+        IFNULL(pto.ejercicio,'') AS ejercicio,
+        IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
+        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
+        stt.const AS cstatus,
+        dvs.codigo AS cdivisa
+    FROM #<@table_name> AS req
+        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
+        LEFT JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
+        LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
+        INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
+        INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
+    WHERE req.#<@keyfield> = @_entity_id
     "
 
     buscarUnidad::&db,&params
@@ -59,24 +91,38 @@ module ""
     {
         sql = "
         SELECT
-            sys_pk,
-            sys_guid,
-            id,
-            partida
-        FROM gop_partida
+            pda.sys_pk,
+            pda.sys_guid,
+            pda.id,
+            pda.partida
+        FROM gop_partida AS pda
+            INNER JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
+            INNER JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
         WHERE #<condition>
         "
         if trim(@@(params,"$id")) != ""
         {
-            condition = "(sys_pk = @id OR sys_guid = @id)"
+            condition = "(pda.sys_pk = @id OR pda.sys_guid = @id)"
             return dbr.rec(db,ftext(sql),params)
         }
         if trim(@@(params,"$search")) != ""
         {
-            condition = "(id LIKE CONCAT('%',@search,'%') OR partida LIKE CONCAT('%',@search,'%'))"
+            condition = "(pda.id LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))"
+            condition = condition + " AND pto.ejercicio = @ejercicio AND uni.sys_pk = @iunidad"
+            condition = condition + " AND (select count(sys_pk) from gop_partida where padre = pda.sys_pk) = 0"
+            
             return dbr.list(db,ftext(sql),params)
         }
         return list.create()
+    }
+
+    obtenerFultimo::&db,&params
+    {
+        new data
+        {
+            @"fultimo": dbr.folios.get_new(db,@@(params,"#_entity_id"))
+        }
+        return data
     }
 
     obtenerUnidad::&db,id
@@ -91,10 +137,10 @@ module ""
         return buscarPartida(db,params)
     }
 
-    obtenerFultimo::&db,&params
+    obtenerPkUsr::&db,id
     {
-        new data { @"fultimo": dbr.folios.get_new(db,@@(params,"#_entity_id")) }
-        return data
+        new params { @"id": id }
+        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
     }
 
     prepareList::&db,&params,&data
@@ -104,9 +150,23 @@ module ""
 
     prepareView::&db,&params,&data
     {
-        data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = 70",@null)
-        data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
-        data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
+        isNew = (@@(params,"$_entity_id") == "_new")
+
+        if isNew
+        {
+            ref fd = ifnull(@@(data,"&form"),record.create())
+            new args
+            {
+                @"cRequisicion": @cRequisicion
+            }
+
+            if @@(fd,"#unidad_org") > 0 { data<"dt_unidad_org*"> : obtenerUnidad(db,@@(fd,"#unidad_org")) }
+            if @@(fd,"#partida") > 0 { data<"dt_partida_pre*"> : obtenerPartida(db,@@(fd,"#partida")) }
+
+            data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @cRequisicion",args)
+            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
+            data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
+        }
     }
 
     req.list::&db,&params
@@ -122,7 +182,10 @@ module ""
 
     req.read::&db,&params
     {
-        new data {}
+        new data
+        {
+            @"cmpreq*": entity.read(db,params)
+        }
         do prepareView(db,params,data)
 
         return data
@@ -134,5 +197,62 @@ module ""
         do prepareView(db,params,data)
 
         return data
+    }
+
+    req.create::&db,&params,&data
+    {
+        @use_transaction = @false
+        
+        serie = trim(@@(data,"$serie"))
+        folio = abs(@@(data,"#folio"))
+
+        do dbr.begin(db)
+
+        iblock = dbr.folios.id_block(db,@cRequisicion,serie)
+        if folio > 0 { folio = dbr.folios.set_new(db,iblock,folio,3) }
+        else { folio = dbr.folios.set_new(db,iblock,dbr.folios.get_new(db,iblock),3) }
+        ref infoFolio = dbr.folios.info(db,iblock,folio)
+
+        referencia = serie + padleft(str(folio),6,"0")
+
+        new cmpreq
+        {
+            @"sys_user": @@(@http_context, "$session/user/uid")
+
+            @"partida": @@(data,"#partida")
+            @"periodo": @@(data,"#periodo")
+            @"referencia": referencia
+            @"folio": @@(infoFolio,"#sys_pk")
+            @"fecha*": str2dt(trim(@@(data,"$fecha")))
+            @"flimite*": str2dt(trim(@@(data,"$flimite")))
+            @"subtotal": 0
+            @"impuestos": 0
+            @"divisa": @@(data,"#divisa")
+            @"tcambio": @@(data,"#tcambio")
+            @"status": @@(data,"#status")
+            @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
+        }
+        
+        ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
+
+        do dbr.commit(db)
+
+        @url_redir = "/!/cmpreq/requisiciones/"+@@(entity,"$sys_pk")+"/"
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            do record.clear(data)
+            data<"form*"> : FormData
+
+            do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
     }
 }
