@@ -7,8 +7,8 @@ module ""
 
     @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
     @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
-    @create_exclude_fields = "sys_lastuser"
-    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user"
+    @create_exclude_fields = "sys_lastuser,subtotal,impuestos"
+    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status,subtotal,impuestos"
 
     @list_query = "
     SELECT
@@ -167,6 +167,10 @@ module ""
             data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
             data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
         }
+        else
+        {
+            data<"zimpuesto"> : lib.get_zimpuesto(db)
+        }
     }
 
     req.list::&db,&params
@@ -238,6 +242,46 @@ module ""
         do dbr.commit(db)
 
         @url_redir = "/!/cmpreq/requisiciones/"+@@(entity,"$sys_pk")+"/"
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            do record.clear(data)
+            data<"form*"> : FormData
+
+            do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
+    }
+
+    req.update::&db,&params,&data
+    {
+        @use_transaction = @false
+
+        do dbr.begin(db)
+
+        new cmpreq
+        {
+            @"sys_lastuser": @@(@http_context, "$session/user/uid")
+
+            @"periodo": @@(data,"#periodo")
+            @"fecha*": str2dt(trim(@@(data,"$fecha")))
+            @"flimite*": str2dt(trim(@@(data,"$flimite")))
+            @"subtotal": 0
+            @"impuestos": 0
+            @"tcambio": @@(data,"#tcambio")
+            @"notas": trim(@@(data,"$notas"))
+        }
+
+        ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
+
+        do dbr.commit(db)
 
         exception
         {

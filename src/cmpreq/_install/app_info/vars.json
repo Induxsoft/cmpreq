@@ -1,0 +1,29 @@
+[
+    {
+        "id": "cmpreq",
+        "caption": "Requisiciones",
+        "help": "Variables del paquete: cmpreq",
+        "vars": [
+            {
+                "varname": "cmpreq_zimpuesto",
+                "vardefault": "1",
+                "varvalue": "1",
+                "varcaption": "Zona de impuestos",
+                "varhelp": "Configuración de la zona para el cálculo de impuestos de los productos.",
+                "vartype": "int",
+                "varinput": {
+                    "control": "select",
+                    "source":{
+                        "type":"list",
+                        "values":[
+                            {"id":"1", "const":"cInterior"},
+                            {"id":"2", "const":"cFrontera"}
+                        ],
+                        "keyfield":"id",
+                        "showfield":"const"
+                    }
+                }
+            }
+        ]
+    }
+]

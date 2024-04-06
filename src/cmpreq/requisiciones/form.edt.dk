@@ -17,7 +17,8 @@ module "form.dk"
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
-    isNew = (@_entity_id == "_new")
+
+    @zimpuesto = @("$./zimpuesto")
 
     curr_ndt = ndatetime.now()
     curr_year = ndatetime.year(curr_ndt)
@@ -57,7 +58,11 @@ module "form.dk"
     header_act::
     {
         #$
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" id="btn_submit"){$"#<@ICON_SAVE>"}
+        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_approve"){$"#<@ICON_CHECK> Aprobar"}
+        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_inprocess"){$"#<@ICON_PROCESS> En proceso"}
+        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_complete"){$"#<@ICON_FILE_CHECK> Completar"}
+        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_cancel"){$"#<@ICON_FILE_CANCEL> Cancelar"}
+        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
         #!
     }
 
@@ -81,27 +86,29 @@ module "form.dk"
         #$
         div(id="work_area" class="container-section")
         {
-            form(method="POST" action="./" id="form")
+            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
+
+            form(method="POST" action="./" id="form-edt-cmpreq")
             {
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
 
                 fieldset(class="d-flex justify-content-between flex-wrap gap-2" disabled="")
                 {
-                    label(class="form-label")
+                    label(class="form-label d-lg-flex align-items-center gap-1")
                     {
-                        h6{$"Unidad organizacional: "}
-                        input(class="form-control-plaintext py-0" type="text" name="" value="#<@@(cmpreq,'$unidad_org')>")
+                        h6(class="my-0"){$"Unidad organizacional:"}
+                        input(class="form-control-plaintext w-auto py-0" type="text" name="" value="#<@@(cmpreq,'$unidad_org')>" spellcheck="false")
                     }
-                    label(class="form-label")
+                    label(class="form-label d-lg-flex align-items-center gap-1")
                     {
-                        h6{$"Ejercicio: "}
-                        input(class="form-control-plaintext py-0" type="text" name="" value="#<@@(cmpreq,'$ejercicio')>")
+                        h6(class="my-0"){$"Ejercicio:"}
+                        input(class="form-control-plaintext w-auto py-0" type="text" name="" value="#<@@(cmpreq,'$ejercicio')>" spellcheck="false")
                     }
-                    label(class="form-label")
+                    label(class="form-label d-lg-flex align-items-center gap-1")
                     {
-                        h6{$"Partida presupuestal: "}
-                        input(class="form-control-plaintext py-0" type="text" name="" value="#<@@(cmpreq,'$partida_pre')>")
+                        h6(class="my-0"){$"Partida presupuestal:"}
+                        input(class="form-control-plaintext w-auto py-0" type="text" name="" value="#<@@(cmpreq,'$partida_pre')>" spellcheck="false")
                     }
                 }
 
@@ -148,8 +155,6 @@ module "form.dk"
                 input(type="hidden" name="_detalle" value="" id="txt_dcmpreq")
             }
 
-            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
-
             div(class="d-flex justify-content-end align-items-center border-top gap-1 px-2 my-2" id="tbl_action_bar")
             {
                 small(class="flex-grow-1 text-muted"){$"Seleccione los productos en la cuadrícula"}
@@ -161,7 +166,7 @@ module "form.dk"
             div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:55vh; display:flex;")
             {
                 "edit-table"(id="tbl_productos" data="#<to.json(dcmpreq)>" "auto-confirm"="true" style="width:100%;"
-                "row-height"="1rem"
+                "row-height"="1.2rem"
                 "control-styles"="
                     tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
                     tr td { font-size:.8rem; }
@@ -195,12 +200,20 @@ module "form.dk"
             }
         }
 
+        div
+        {
+            "input-key"(id="ik_producto" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" "data-source"="#<@URL_BUSCAR_PRODUCTO>" columns="codigo,descripcion" colcaptions="Código,Descripción" "box-title-text"="Seleccione un producto" "control-styles"="#container{display:none !important;}"){$""}
+        }
+
         #$
         script(src="#<@JS_MAIN>"){$""}
         script(src="#<@JS_REQUISICIONES>"){$""}
 		script(type="text/javascript")
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
+                requisiciones.edit.formId = "form-edt-cmpreq";
+                requisiciones.edit.tableId = "tbl_productos";
+                requisiciones.edit.zimpuesto = "#<@zimpuesto>";
                 requisiciones.edit.init();
                 InduxsoftNumberFields.Init();
             });
