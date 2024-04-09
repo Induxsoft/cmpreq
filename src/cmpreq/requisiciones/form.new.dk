@@ -59,7 +59,7 @@ module "form.dk"
         }
         @"value_field": "id"
         @"text_field": "const"
-        @"selected": lib.form('status','nm',cmpreq)
+        @"selected": field.dnum(ifnull(@("&./form"),cmpreq),"status",1)
     }
 
     new sel_divisa

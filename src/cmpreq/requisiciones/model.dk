@@ -400,7 +400,7 @@ module ""
             @"referencia": referencia
             @"folio": @@(infoFolio,"#sys_pk")
             @"fecha*": str2dt(trim(@@(data,"$fecha")))
-            @"flimite*": str2dt(trim(@@(data,"$flimite")))
+            @"flimite*": @null
             @"subtotal": 0
             @"impuestos": 0
             @"divisa": @@(data,"#divisa")
@@ -408,6 +408,8 @@ module ""
             @"status": @@(data,"#status")
             @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
+
+        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
         
         ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
 
@@ -435,7 +437,6 @@ module ""
     req.update::&db,&params,&data
     {
         @use_transaction = @false
-        do rise_error(0,"Probando...")
 
         do dbr.begin(db)
 
@@ -447,12 +448,14 @@ module ""
 
             @"periodo": @@(data,"#periodo")
             @"fecha*": str2dt(trim(@@(data,"$fecha")))
-            @"flimite*": str2dt(trim(@@(data,"$flimite")))
+            @"flimite*": @null
             @"subtotal": 0
             @"impuestos": 0
             @"tcambio": @@(data,"#tcambio")
             @"notas": trim(@@(data,"$notas"))
         }
+
+        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
 
         // 1 - $ | 2 - # | 3 - * | 0 - not exist
         if field.typeof(data,"_detalle") == 1
