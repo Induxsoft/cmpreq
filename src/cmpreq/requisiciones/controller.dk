@@ -14,6 +14,11 @@ module ""
             point @list to buscarPartida
             break
         }
+        case "buscar-producto"
+        {
+            point @list to buscarProducto
+            break
+        }
         case "obtener-fultimo"
         {
             point @read to obtenerFultimo
