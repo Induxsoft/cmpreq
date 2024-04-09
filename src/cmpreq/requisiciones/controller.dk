@@ -29,6 +29,8 @@ module ""
             point @read to req.read
             point @blank to req.blank
             point @create to req.create
+            point @update to req.update
+            point @delete to req.delete
             break
         }
     }

@@ -24,7 +24,11 @@ module "form.dk"
     curr_year = ndatetime.year(curr_ndt)
     curr_month = ndatetime.month(curr_ndt)
     curr_day = ndatetime.day(curr_ndt)
-    
+
+    if @("$error/message") != "" {
+        _detalle = @("$./form/_detalle")
+        if _detalle != "" { ref dcmpreq = from.json(_detalle) }
+    }
     if list.count(dcmpreq) <= 0 { ref dcmpreq = from.json('[{},{},{},{},{},{},{},{},{},{}]') }
 
     new sel_periodo
@@ -152,7 +156,7 @@ module "form.dk"
                 label(class="form-label" "for"="txt_notas"){$"Notas:"}
                 textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',cmpreq)>"}
 
-                input(type="hidden" name="_detalle" value="" id="txt_dcmpreq")
+                input(type="hidden" name="_detalle" value="" id="txt_detalle")
             }
 
             div(class="d-flex justify-content-end align-items-center border-top gap-1 px-2 my-2" id="tbl_action_bar")
@@ -162,6 +166,8 @@ module "form.dk"
                 button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow" type="button" id="btn-add-row" title="Agregar fila"){$"#<@ICON_ADD_ROW>"}
                 button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow" type="button" id="btn-del-row" title="Eliminar fila"){$"#<@ICON_REMOVE_ROW>"}
             }
+
+            div(class="alert alert-danger rounded-0 mb-1 py-0 d-none" role="alert" id="tbl_alerts"){$""}
 
             div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:55vh; display:flex;")
             {
@@ -181,11 +187,11 @@ module "form.dk"
                             "edit-th"(type="Text" field="edt_codigo" button="true"){$"Código"}
                             "edit-th"(type="Text" field="edt_descripcion" button="true"){$"Descripción"}
                             "edit-th"(type="Select" field="edt_unidad" options="{}"){$"Unidad"}
-                            "edit-th"(type="Number" field="edt_precio" textalign="end"){$"Precio"}
+                            "edit-th"(type="Number" field="edt_precio" textalign="end" format="true" thousandssep="," decs="4"){$"Precio"}
                             "edit-th"(type="Number" field="edt_cantidad" textalign="center"){$"Cantidad"}
-                            "edit-th"(type="NoEditable" field="edt_subtotal" textalign="end"){$"Subtotal"}
-                            "edit-th"(type="NoEditable" field="edt_impuestos" textalign="end"){$"Impuestos"}
-                            "edit-th"(type="NoEditable" field="edt_importe" textalign="end"){$"Importe"}
+                            "edit-th"(type="NoEditable" field="edt_subtotal" textalign="end" format="true" thousandssep="," decs="4"){$"Subtotal"}
+                            "edit-th"(type="NoEditable" field="edt_impuestos" textalign="end" format="true" thousandssep="," decs="4"){$"Impuestos"}
+                            "edit-th"(type="NoEditable" field="edt_importe" textalign="end" format="true" thousandssep="," decs="4"){$"Importe"}
                             "edit-th"(type="Memo" field="edt_notas"){$"Notas"}
                         }
                     }
@@ -213,6 +219,7 @@ module "form.dk"
             document.addEventListener("DOMContentLoaded", () => {
                 requisiciones.edit.formId = "form-edt-cmpreq";
                 requisiciones.edit.tableId = "tbl_productos";
+                requisiciones.edit.divAlerts = "#tbl_alerts";
                 requisiciones.edit.zimpuesto = "#<@zimpuesto>";
                 requisiciones.edit.init();
                 InduxsoftNumberFields.Init();

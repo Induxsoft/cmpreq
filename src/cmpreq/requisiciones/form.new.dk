@@ -21,7 +21,6 @@ module "form.dk"
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
-    isNew = (@_entity_id == "_new")
 
     curr_ndt = ndatetime.now()
     curr_year = ndatetime.year(curr_ndt)

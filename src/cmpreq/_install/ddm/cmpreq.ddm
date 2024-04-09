@@ -725,6 +725,7 @@ model "erp.requisiciones"
     {
         @"ref_req" ref:"cmpreq" required
         @"producto" ref:"producto" required
+        @"cantidad" decimal(12,4) required
         @"unidad" string(15) required
         @"precio" decimal(12,4) required
         @"impuestos" decimal(12,4) required

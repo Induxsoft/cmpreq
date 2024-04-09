@@ -111,9 +111,4 @@ module "Funciones de propósito general:lib"
 
         exception{ return @false }
     }
-
-    function get_zimpuesto(&db)
-    {
-        return dbr.vars.getd(db,"cmpreq_zimpuesto","1")
-    }
 }

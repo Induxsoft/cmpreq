@@ -116,22 +116,28 @@ var requisiciones =
     edit: {
         formId:"", form:null,
         tableId:"", table:null,
-        zimpuesto:"",
+        divAlerts:"", zimpuesto:"", lastUnit:"",
 
         init()
         {
             const btn_submit = document.getElementById("btn_submit");
             const ik_producto = document.getElementById("ik_producto");
+            const btn_add_row = document.getElementById("btn-add-row");
+            const btn_del_row = document.getElementById("btn-del-row");
             this.form = document.getElementById(this.formId);
             this.table = document.getElementById(this.tableId);
 
-            btn_submit.addEventListener("click", () => { trigger(this.form,"submit") });
+            btn_submit.addEventListener("click", () => { this.save() });
             ik_producto.onBeforeSearch = (url) => { return this.prepareIkProducto(url) }
-            ik_producto.addEventListener("change",(data) => { this.addProducto(data) });
+            ik_producto.addEventListener("change",(data) => { this.agregarProducto(data) });
+            btn_add_row.addEventListener("click", () => { this.table.AddRow() });
+            btn_del_row.addEventListener("click", () => { this.table.DeleteCurrentRow() });
 
             this.table.setInputKey("edt_codigo",ik_producto);
             this.table.setInputKey("edt_descripcion",ik_producto);
             this.setKeyboardShortcuts();
+            this.setEventTable();
+            this.sumarTotales();
         },
 
         setKeyboardShortcuts()
@@ -149,13 +155,41 @@ var requisiciones =
             });
         },
 
+        setEventTable()
+        {
+            if (!this.table) return;
+
+            let tbl = this.table;
+            const evt = tbl.EdiTable.Const.Events;
+
+            tbl.Events[evt.StartEdition] = (e) => { this.fillUnitCell(e) };
+            tbl.Events[evt.BeforeUpdateCell] = (e) => { this.validateRowCells(e) };
+            tbl.Events[evt.ConfirmEdition] = (e) =>
+            {
+                this.calculateAmountsXUnits(e);
+                this.setInsertValues(e);
+            };
+        },
+
+        save()
+        {
+            if (!this.form.reportValidity()) return;
+
+            const txt_detalle = document.getElementById("txt_detalle");
+            let _detalle = (this.table?.DataArray??[]).filter((prod) => { return Object.entries(prod??{}).length >= 9 });
+
+            txt_detalle.value = JSON.stringify(_detalle);
+
+            trigger(this.form,"submit");
+        },
+
         prepareIkProducto(url)
         {
             let zimpuesto = (this.zimpuesto > 1) ? -1 : 1;
             return url.replace("@zimpuesto",zimpuesto);
         },
 
-        addProducto(p)
+        agregarProducto(p)
         {
             if (!p) return;
 
@@ -194,9 +228,7 @@ var requisiciones =
                 tipocambio: p.tipocambio,
                 unidad: p.unidada,
                 xfacturar: 1.0,
-                iproducto: p.sys_pk,
-                doc_partida: (p.doc_partida??null),
-                documento: (p.documento??null),
+                producto: p.sys_pk,
 
                 // campos extras para operaciones.
                 subtotal: i.subtotal,
@@ -216,14 +248,7 @@ var requisiciones =
                 factorc: p.factorc,
                 factord: p.factord,
                 factore: p.factore,
-                lunidades: lu,
-                reqlote: p.reqlote,
-                reqserie: p.reqserie,
-                doc_partida: (p.doc_partida??null),
-                pendientes: p.pendientes,
-                minimo: (p.minimo??0),
-                usado: (p.minimo??0),
-                cantidad_constante: (p.cantidad_constante??0)
+                list_unidades: lu
             }
 
             if (curr_row < 0) curr_row = 0;
@@ -231,7 +256,34 @@ var requisiciones =
             tData[curr_row] = producto
             this.table.UpdateRow(curr_row);
             this.table.NavTo(curr_row,2);
-            this.sumarImportes();
+            this.sumarTotales();
+        },
+
+        actualizarProducto(producto, rowIndex) {
+            let i = this.calcularImpuestos(producto);
+    
+            producto["edt_precio"] = i.costo;
+            producto["edt_cantidad"] = i.cantidad;
+            producto["edt_subtotal"] = i.subtotal;
+            producto["edt_descuentos"] = i.descuentos;
+            producto["edt_impuestos"] = i.impuestos;
+            producto["edt_importe"] = i.total;
+    
+            producto["precio"] = i.costo;
+            producto["cantidad"] = i.cantidad;
+            producto["subtotal"] = i.subtotal;
+            producto["descuentos"] = i.descuentos;
+            producto["impuestos"] = i.impuestos;
+            producto["importe"] = i.total;
+            producto["costototal"] = i.costo;
+            producto["descuento1"] = i.descuentos;
+            producto["impuesto1"] = i.impuesto1;
+            producto["impuesto2"] = i.impuesto2;
+            producto["impuesto3"] = i.impuesto3;
+            producto["impuesto4"] = i.impuesto4;
+    
+            this.table.UpdateRow(rowIndex);
+            this.sumarTotales();
         },
 
         joinUnidades(...unidades) {
@@ -268,7 +320,8 @@ var requisiciones =
             let impuestos = Math.add(i1_i2,i3_i4);
             let total = Math.add(sub_desc,impuestos);
     
-            let importes = {
+            let importes =
+            {
                 costo: costo,
                 cantidad: cantidad,
                 subtotal: subtotal,
@@ -284,8 +337,10 @@ var requisiciones =
             return importes;
         },
 
-        sumarImportes()
+        sumarTotales()
         {
+            if (!this.table) return;
+
             const lbl_subtotal = document.getElementById("lbl_subtotal");
             const lbl_impuesto = document.getElementById("lbl_impuesto");
             const lbl_importe = document.getElementById("lbl_importe");
@@ -293,13 +348,13 @@ var requisiciones =
 
             let lcode = (new Intl.NumberFormat()).resolvedOptions().locale;
             let divisa = txt_divisa.getAttribute("data-codigo").toUpperCase();
-            let tData = this.table.DataArray ?? [];
+            let tData = this.table?.DataArray ?? [];
     
             let subtotal = 0, descuento = 0, impuesto = 0, importe = 0;
     
             for (let i = 0; i < tData.length; i++) {
                 const producto = tData[i];
-                if (Object.entries(producto ?? {}).length === 0) continue;
+                if (Object.entries(producto ?? {}).length < 9) continue;
                 
                 subtotal += Number(producto.subtotal);
                 descuento += Number(producto.descuentos);
@@ -317,6 +372,187 @@ var requisiciones =
             lbl_subtotal.textContent = formatter.format(subtotal);
             lbl_impuesto.textContent = formatter.format(impuesto);
             lbl_importe.textContent = formatter.format(importe);
-        }
+        },
+
+        fillUnitCell(e)
+        {
+            let coldef = e.sender.GetColumnDefOfTd(e.td);
+            let curr_row = this.table.CurrentRowIndex();
+            let producto = this.table?.DataArray[curr_row] ?? {};
+
+            if (Object.entries(producto ?? {}).length < 9) return;
+            if (coldef.field !== "edt_unidad") return;
+
+            if (!producto.list_unidades) {
+                producto["list_unidades"] = this.joinUnidades(producto.unidada,producto.unidadb,producto.unidadc,producto.unidadd,producto.unidade);
+            }
+            coldef.options = JSON.parse(producto.list_unidades);
+        },
+
+        validateRowCells(e)
+        {
+            let curr_row = e.sender.RowIndexOfTd(e.td);
+            let field = e.coldef.field;
+            let producto = this.table?.DataArray[curr_row] ?? {};
+
+            if (Object.entries(producto ?? {}).length < 9) return;
+
+            if (field === "edt_unidad" && e.text.trim() === "") {
+                show_alert(this.divAlerts,"Debe elegir la unidad.",3);
+                e.cancel = true;
+                return false;
+            }
+            if ((field === "edt_precio" || field === "edt_cantidad") && Number(e.text.trim()) <= 0) {
+                show_alert(this.divAlerts,"El valor debe ser mayor que 0.",3);
+                e.cancel = true;
+                return false;
+            }
+        },
+
+        calculateAmountsXUnits(e)
+        {
+            let curr_row = e.sender.RowIndexOfTd(e.td);
+            let producto = this.table?.DataArray[curr_row] ?? {};
+
+            if (Object.entries(producto ?? {}).length < 9) return;
+            if (e.coldef.field !== "edt_unidad") return;
+            
+            this.lastUnit = producto.unidad;
+            producto["unidad"] = e.text;
+
+            switch (e.text) {
+                case producto.unidada:
+                    if (this.lastUnit == producto.unidada) return;
+
+                    let precioA = 0;
+                    if (this.lastUnit == producto.unidadb) precioA = Math.div(producto.precio,producto.factorb);
+                    else if (this.lastUnit == producto.unidadc) precioA = Math.div(producto.precio,producto.factorc);
+                    else if (this.lastUnit == producto.unidadd) precioA = Math.div(producto.precio,producto.factord);
+                    else if (this.lastUnit == producto.unidade) precioA = Math.div(producto.precio,producto.factore);
+                    
+                    producto["precio"] = precioA;
+                    producto["factor"] = 1; // factora
+                    this.lastUnit = producto.unidada;
+
+                    this.actualizarProducto(producto,curr_row);
+                    break;
+                case producto.unidadb:
+                    if (this.lastUnit == producto.unidadb) return;
+
+                    let precioB = 0;
+                    if (this.lastUnit == producto.unidada) precioB = Math.mul(producto.precio,producto.factorb);
+                    else if (this.lastUnit == producto.unidadc) {
+                        let x = Math.mul(producto.factorb,producto.precio);
+                        precioB = Math.div(x,producto.factorc);
+                    }
+                    else if (this.lastUnit == producto.unidadd) {
+                        let x = Math.mul(producto.factorb,producto.precio);
+                        precioB = Math.div(x,producto.factord);
+                    }
+                    else if (this.lastUnit == producto.unidade) {
+                        let x = Math.mul(producto.factorb,producto.precio);
+                        precioB = Math.div(x,producto.factore);
+                    }
+
+                    producto["precio"] = precioB;
+                    producto["factor"] = producto.factorb;
+                    this.lastUnit = producto.unidadb;
+
+                    this.actualizarProducto(producto,curr_row);
+                    break;
+                case producto.unidadc:
+                    if (this.lastUnit == producto.unidadc) return;
+                    
+                    let precioC = 0;
+                    if (this.lastUnit == producto.unidada) precioC = Math.mul(producto.precio,producto.factorc);
+                    else if (this.lastUnit == producto.unidadb) {
+                        let x = Math.mul(producto.factorc,producto.precio);
+                        precioC = Math.div(x,producto.factorb);
+                    }
+                    else if (this.lastUnit == producto.unidadd) {
+                        let x = Math.mul(producto.factorc,producto.precio);
+                        precioC = Math.div(x,producto.factord);
+                    }
+                    else if (this.lastUnit == producto.unidade) {
+                        let x = Math.mul(producto.factorc,producto.precio);
+                        precioC = Math.div(x,producto.factore);
+                    }
+
+                    producto["precio"] = precioC;
+                    producto["factor"] = producto.factorc;
+                    this.lastUnit = producto.unidadc;
+
+                    this.actualizarProducto(producto,curr_row);
+                    break;
+                case producto.unidadd:
+                    if (this.lastUnit == producto.unidadd) return;
+                    
+                    let precioD = 0;
+                    if (this.lastUnit == producto.unidada) precioD = Math.mul(producto.precio,producto.factord);
+                    else if (this.lastUnit == producto.unidadb) {
+                        let x = Math.mul(producto.factord,producto.precio);
+                        precioD = Math.div(x,producto.factorb);
+                    }
+                    else if (this.lastUnit == producto.unidadc) {
+                        let x = Math.mul(producto.factord,producto.precio);
+                        precioD = Math.div(x,producto.factorc);
+                    }
+                    else if (this.lastUnit == producto.unidade) {
+                        let x = Math.mul(producto.factord,producto.precio);
+                        precioD = Math.div(x,producto.factore);
+                    }
+                    
+                    producto["precio"] = precioD;
+                    producto["factor"] = producto.factord;
+                    this.lastUnit = producto.unidadd;
+
+                    this.actualizarProducto(producto,curr_row);
+                    break;
+                case producto.unidade:
+                    if (this.lastUnit == producto.unidade) return;
+                    
+                    let precioE = 0;
+                    if (this.lastUnit == producto.unidada) precioE = Math.mul(producto.precio,producto.factore);
+                    else if (this.lastUnit == producto.unidadb) {
+                        let x = Math.mul(producto.factore,producto.precio);
+                        precioE = Math.div(x,producto.factorb);
+                    }
+                    else if (this.lastUnit == producto.unidadc) {
+                        let x = Math.mul(producto.factore,producto.precio);
+                        precioE = Math.div(x,producto.factorc);
+                    }
+                    else if (this.lastUnit == producto.unidadd) {
+                        let x = Math.mul(producto.factore,producto.precio);
+                        precioE = Math.div(x,producto.factord);
+                    }
+
+                    producto["precio"] = precioE;
+                    producto["factor"] = producto.factore;
+                    this.lastUnit = producto.unidade;
+
+                    this.actualizarProducto(producto,curr_row);
+                    break;
+
+                default:
+                    show_alert(this.divAlerts,"Unidad: " + e.text + " no se encuentra en el diccionario.", 3);
+                    break;
+            }
+        },
+
+        setInsertValues(e)
+        {
+            let curr_row = e.sender.RowIndexOfTd(e.td);
+            let field = e.coldef.field;
+            let producto = this.table?.DataArray[curr_row] ?? {};
+
+            if (Object.entries(producto ?? {}).length < 9) return;
+            if (!["edt_precio","edt_cantidad","edt_notas"].includes(field)) return;
+
+            if (field === "edt_precio") producto["precio"] = Number(e.text.trim());
+            if (field === "edt_cantidad") producto["cantidad"] = Number(e.text.trim());
+            if (field === "edt_notas") producto["notas"] = e.text.trim();
+
+            this.actualizarProducto(producto,curr_row);
+        },
     }
 }

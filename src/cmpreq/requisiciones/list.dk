@@ -59,8 +59,8 @@ module "list.dk"
     new fil_fdr_field
     {
         @"datatable*": from.json('[
-            {"id":10, "const":"Elaboración"},
-            {"id":20, "const":"Vencimiento"},
+            {"id":1, "const":"Elaboración"},
+            {"id":2, "const":"Vencimiento"},
         ]')
         @"id": "fil_fdr_field"
         member "attributes"

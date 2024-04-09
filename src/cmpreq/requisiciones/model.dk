@@ -7,8 +7,8 @@ module ""
 
     @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
     @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
-    @create_exclude_fields = "sys_lastuser,subtotal,impuestos"
-    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status,subtotal,impuestos"
+    @create_exclude_fields = "sys_lastuser"
+    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
 
     @list_query = "
     SELECT
@@ -31,6 +31,7 @@ module ""
         INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
         INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
     WHERE NOT IFNULL(req.sys_deleted,0)
+    #<conditions>
     LIMIT #<@default_max_rows>
     "
 
@@ -61,6 +62,50 @@ module ""
         INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
         INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
     WHERE req.#<@keyfield> = @_entity_id
+    "
+
+    @childs_query = "
+    SELECT
+    -- Campos visibles en el editable
+        p.codigo AS edt_codigo,
+        p.descripcion AS edt_descripcion,
+        d.unidad AS edt_unidad,
+        d.precio AS edt_precio,
+        d.cantidad AS edt_cantidad,
+        (d.precio * d.cantidad) AS edt_subtotal,
+        0 AS edt_descuentos,
+        d.impuestos AS edt_impuestos,
+        ((d.cantidad * d.precio) + d.impuestos) AS edt_importe,
+        d.notas AS edt_notas,
+    -- Campos para el insert
+        d.producto,
+        d.cantidad,
+        d.unidad,
+        d.precio,
+        d.impuestos,
+        IFNULL(d.excluido,0) AS excluido,
+        IFNULL(d.notas,'') AS notas,
+    -- Campos extras para operaciones
+        (d.precio * d.cantidad) AS subtotal,
+        0 AS descuentos,
+        ((d.cantidad * d.precio) + d.impuestos) AS importe,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i1_tasa,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i2_tasa,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i3compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i3_tasa,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i4compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i4_tasa,
+        TRIM(p.unidad) AS unidada,
+        TRIM(IFNULL(p.unidadb,'')) AS unidadb,
+        TRIM(IFNULL(p.unidadc,'')) AS unidadc,
+        TRIM(IFNULL(p.unidadd,'')) AS unidadd,
+        TRIM(IFNULL(p.unidade,'')) AS unidade,
+        IFNULL(p.factorb,0) AS factorb,
+        IFNULL(p.factorc,0) AS factorc,
+        IFNULL(p.factord,0) AS factord,
+        IFNULL(p.factore,0) AS factore
+    FROM dcmpreq AS d
+        INNER JOIN producto AS p ON p.sys_pk = d.producto
+        INNER JOIN cfgimpuesto AS i ON i.sys_pk = p.impuestos
+    WHERE d.ref_req = @_entity_id
     "
 
     buscarUnidad::&db,&params
@@ -169,12 +214,99 @@ module ""
         }
         else
         {
-            data<"zimpuesto"> : lib.get_zimpuesto(db)
+            /**
+            * Zona de impuesto
+            * 1 => 1 = cInterior
+            * 2 => -1 = cFrontera
+            */
+            zimpuesto = dbr.vars.getd(db,"cmpreq_zimpuesto","1")
+            params<"zimpuesto"> : zimpuesto
+
+            if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
+            data<"dcmpreq*"> : dbr.list(db,@childs_query,params)
+            data<"zimpuesto"> : zimpuesto
         }
+    }
+
+    evaluateFilters::&params
+    {
+        conditions = ""
+
+        if replace(@@(params,"$fil_status"),"*","") != "" { conditions = conditions + "AND req.`status` = @fil_status" }
+
+        if trim(@@(params,"$fil_text")) != "" {
+            conditions = conditions + "AND (req.referencia LIKE CONCAT('%',@fil_text,'%') OR IFNULL(pda.partida,'') LIKE CONCAT('%',@fil_text,'%'))"
+        }
+
+        //#region filter-date-range
+        new req_date_fields
+        {
+            @"1": "req.fecha" // Elaboración
+            @"2": "req.flimite" // Vencimiento
+        }
+        
+        fdr_field = @@(req_date_fields,str(@@(params,"#fil_fdr_field")))
+
+        switch @@(params,"$fdr_mode")
+        {
+            case "month"
+            {
+                curr_ndt = ndatetime.now()
+                curr_year = ndatetime.year(curr_ndt)
+                curr_month = ndatetime.month(curr_ndt)
+                curr_day = ndatetime.day(curr_ndt)
+
+                if not(field.exist(params,"fdr_year")) { params<"fdr_year"> : curr_year }
+                if not(field.exist(params,"fdr_month")) { params<"fdr_month"> : curr_month }
+
+                conditions = conditions + " AND YEAR(#<fdr_field>) = @fdr_year AND MONTH(#<fdr_field>) = @fdr_month"
+                break
+            }
+            case "lastdays"
+            {
+                if not(field.exist(params,"fdr_range")) { params<"fdr_range"> : 30 } // Últimos 30 días
+
+                conditions = conditions + " AND DATE(#<fdr_field>) BETWEEN ADDDATE(DATE(NOW()), INTERVAL -@fdr_range DAY) AND DATE(NOW())"
+                break
+            }
+            case "range"
+            {
+                if not(field.exist(params,"fdr_from"))
+                {
+                    curr_ndt = ndatetime.now()
+                    subt_ndt = ndatetime.add(curr_ndt, -30, "d")
+                    ult_30_days = ndatetime.tostr(subt_ndt, "yyyy-MM-dd")
+
+                    params<"fdr_from"> : ult_30_days
+                }
+                if not(field.exist(params,"fdr_to")) { params<"fdr_to"> : hoy("yyyy-MM-dd") }
+
+                if trim(@@(params,"$fdr_from")) != "" && trim(@@(params,"$fdr_to")) != ""
+                {
+                    conditions = conditions + " AND DATE(#<fdr_field>) BETWEEN @fdr_from AND @fdr_to"
+                }
+                else if trim(@@(params,"$fdr_from")) != "" && trim(@@(params,"$fdr_to")) == ""
+                {
+                    conditions = conditions + " AND DATE(#<fdr_field>) >= @fdr_from"
+                }
+                else if trim(@@(params,"$fdr_from")) == "" && trim(@@(params,"$fdr_to")) != ""
+                {
+                    conditions = conditions + " AND DATE(#<fdr_field>) <= @fdr_to"
+                }
+
+                break
+            }
+        }
+        //#endregion
+
+        conditions = ftext(conditions)
+        @list_query = ftext(@list_query)
     }
 
     req.list::&db,&params
     {
+        do evaluateFilters(params)
+
         new data
         {
             @"requisiciones*": entity.list(db,params)
@@ -263,12 +395,15 @@ module ""
     req.update::&db,&params,&data
     {
         @use_transaction = @false
+        do rise_error(0,"Probando...")
 
         do dbr.begin(db)
 
         new cmpreq
         {
+            @"sys_timestamp*": now()
             @"sys_lastuser": @@(@http_context, "$session/user/uid")
+            @"sys_recver": @@(data,"#sys_recver")
 
             @"periodo": @@(data,"#periodo")
             @"fecha*": str2dt(trim(@@(data,"$fecha")))
@@ -277,6 +412,52 @@ module ""
             @"impuestos": 0
             @"tcambio": @@(data,"#tcambio")
             @"notas": trim(@@(data,"$notas"))
+        }
+
+        // 1 - $ | 2 - # | 3 - * | 0 - not exist
+        if field.typeof(data,"_detalle") == 1
+        {
+            ref _detalle = from.json(@@(data,"_detalle"))
+            ref dcmpreq = list.create()
+
+            subtotal = 0
+            impuestos = 0
+
+            for i = 0; i < list.count(_detalle)
+            {
+                ref producto = list.obj(_detalle,i)
+
+                new d
+                {
+                    @"producto": @@(producto,"#producto")
+                    @"cantidad": @@(producto,"#cantidad")
+                    @"unidad": @@(producto,"$unidad")
+                    @"precio": @@(producto,"#precio")
+                    @"impuestos": (@@(producto,"#impuesto1") + @@(producto,"#impuesto2") + @@(producto,"#impuesto3") + @@(producto,"#impuesto4"))
+                    @"excluido": parse.bool(@@(producto,"$excluido"))
+                    @"notas": @@(producto,"$notas")
+                }
+                do list.add(dcmpreq,d)
+
+                subtotal = subtotal + @@(producto,"#subtotal")
+                impuestos = impuestos + @@(d,"#impuestos")
+            }
+
+            cmpreq<"subtotal"> : subtotal
+            cmpreq<"impuestos"> : impuestos
+            cmpreq<"_detalle*"> : dcmpreq
+        }
+
+        using @childs
+        {
+            member "_detalle"
+            {
+                @"joinfield": "ref_req"
+                @"keyfield": "sys_pk"
+                @"table": "dcmpreq"
+                @"select_query": "SELECT NULL"
+                @"fields": "producto,cantidad,unidad,precio,impuestos,excluido,notas"
+            }
         }
 
         ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
@@ -298,5 +479,10 @@ module ""
             do prepareView(db,params,data)
             do rise_error(code,error)
         }
+    }
+
+    req.delete::&db,&params
+    {
+        do rise_error(500,"Acción no implementada")
     }
 }
