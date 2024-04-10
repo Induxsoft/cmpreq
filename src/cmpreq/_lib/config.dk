@@ -9,14 +9,21 @@ module
 	@default_max_rows = 250 // limite de registros para las vistas de lista
 
 	//* ======================================== [ _STATIC RESOURCES ]
+	@CSS_MAIN = "/$/cmpreq/css/main.css"
 	@JS_MAIN = "/$/cmpreq/js/main.js"
 	@JS_REQUISICIONES = "/$/cmpreq/js/requisiciones.js"
+	@JS_CONSOLIDADOS = "/$/cmpreq/js/consolidados.js"
 
 	//* ======================================== [ _PACKAGE ]
 	@URL_BUSCAR_UNIDAD_ORG = "/!/cmpreq/requisiciones/?_view=buscar-unidad-org&search=@search"
 	@URL_BUSCAR_PARTIDA_PRE = "/!/cmpreq/requisiciones/?_view=buscar-partida-pre&search=@search"
 	@URL_BUSCAR_PRODUCTO = "/!/cmpreq/requisiciones/?_view=buscar-producto&search=@search&zimpuesto=@zimpuesto"
-	@URL_GET_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
+	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
+	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
+	@URL_OBTENER_PRODUCTOS = "/!/cmpreq/consolidados/{ireq}/obtener-productos/"
+
+	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
+	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"
 
 	//* ======================================== [ AUTHORIZATIONS ]
 }

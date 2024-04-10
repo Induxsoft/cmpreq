@@ -92,12 +92,15 @@ module "list.dk"
             member @"status" { @"caption": "Estado" }
 
             member @"_actions" 
-            { 
+            {
                 @"caption":"Acciones" 
                 @"template":ftext('
-                    <div style="display:flex;gap:8px;justify-content:center;width:100%;" class="no-print">
-                        <a href="./${DataRow.sys_pk}/" style="cursor:pointer; text-decoration: none; padding: 0px 8px; background-color: #F5F5F5; color: #000;">Editar</a>
-                        <button onclick="InduxsoftCrudlModel.Delete(${DataRow.sys_pk})" style="cursor:pointer; border: none; outline: none; padding: 0px 8px; background-color: #F5F5F5; color: #000;">Eliminar</button>
+                    <div class="no-print" style="display:flex;gap:8px;justify-content:center;width:100%;">
+                    ${
+                        (DataRow.consolidacion === "Si")
+                            ? `<a href="#<@CMP_CONSOLIDADO>${DataRow.sys_pk}/" style="cursor:pointer; text-decoration:none; padding: 0px 8px; background-color:#F5F5F5; color:#000;">Editar</a>`
+                            : `<a href="#<@CMP_REQUISICION>${DataRow.sys_pk}/" style="cursor:pointer; text-decoration:none; padding: 0px 8px; background-color:#F5F5F5; color:#000;">Editar</a>`
+                    }
                     </div>')
                 @"no-print":@true
             }
@@ -107,7 +110,8 @@ module "list.dk"
     header_act::
     {
         #$
-        a(href="./_new/" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Agregar"}
+        a(href="#<path.concat(@CMP_REQUISICION,'/_new/')>" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Agregar"}
+        a(href="#<path.concat(@CMP_CONSOLIDADO,'/_new/')>" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Crear consolidación"}
         #!
     }
 

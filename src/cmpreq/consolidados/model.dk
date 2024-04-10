@@ -1,0 +1,285 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    @table_name = "cmpreq"
+    @table_name = "cmpreq"
+    @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
+
+    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
+    @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
+    @create_exclude_fields = "sys_lastuser"
+    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
+
+    @list_query = "
+    SELECT
+        req.sys_pk,
+        req.sys_guid,
+        req.referencia,
+        DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
+        IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
+        CONCAT('$',FORMAT(req.subtotal,4)) AS subtotal,
+        CONCAT('$',FORMAT(req.impuestos,4)) AS impuestos,
+        CONCAT('$',FORMAT((req.subtotal + req.impuestos),4)) AS total,
+        IF(req.consolidacion,'Si','No') AS consolidacion,
+        IFNULL(con.referencia,'') AS consolidadoen,
+        IFNULL(pda.partida,'') AS partida,
+        stt.const AS `status`,
+        dvs.codigo AS `divisa`
+    FROM #<@table_name> AS req
+        LEFT JOIN #<@table_name> AS con ON con.sys_pk = req.en
+        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
+        INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
+        INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
+    WHERE NOT IFNULL(req.sys_deleted,0) AND IFNULL(req.consolidacion,0)
+    #<conditions>
+    LIMIT #<@default_max_rows>
+    "
+
+    @read_query = "
+    SELECT
+        req.sys_pk,
+        req.sys_guid,
+        req.sys_recver,
+        req.referencia,
+        DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
+        IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
+        req.subtotal,
+        req.impuestos,
+        (req.subtotal + req.impuestos) AS importe,
+        req.periodo,
+        req.tcambio,
+        req.`status`,
+        IFNULL(req.notas,'') AS notas,
+        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
+        stt.const AS cstatus,
+        dvs.codigo AS cdivisa
+    FROM #<@table_name> AS req
+        INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
+        INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
+    WHERE req.#<@keyfield> = @_entity_id
+    "
+
+    buscarRequisicion::&db,&params
+    {
+        sql = "
+        SELECT
+            req.sys_pk,
+            req.sys_guid,
+            req.referencia,
+            DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
+            IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
+            req.subtotal,
+            req.impuestos,
+            (req.subtotal + req.impuestos) AS importe,
+            req.periodo,
+            req.tcambio,
+            req.`status`,
+            IFNULL(req.notas,'') AS notas,
+            IFNULL(pda.partida,'') AS partida_pre,
+            IFNULL(pto.ejercicio,'') AS ejercicio,
+            IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
+            stt.const AS cstatus,
+            dvs.codigo AS cdivisa
+        FROM #<@table_name> AS req
+            LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
+            LEFT JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
+            LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
+            INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
+            INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
+        WHERE NOT IFNULL(req.sys_deleted,0)
+            AND NOT IFNULL(req.consolidacion,0)
+            AND req.en IS NULL
+            AND req.`status` = 1
+            AND (req.referencia LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
+        "
+        return dbr.list(db,ftext(sql),params)
+    }
+
+    obtenerProductos::&db,&params
+    {
+        sql = "
+        SELECT
+            d.ref_req,
+            d.producto,
+            p.codigo,
+            p.descripcion,
+            d.unidad,
+            d.precio,
+            d.cantidad,
+            (d.precio * d.cantidad) AS subtotal,
+            d.impuestos,
+            ((d.cantidad * d.precio) + d.impuestos) AS importe,
+            IFNULL(d.excluido,0) AS excluido,
+            IFNULL(d.notas,'') AS notas
+        FROM dcmpreq AS d
+            INNER JOIN producto AS p ON p.sys_pk = d.producto
+        WHERE d.ref_req = @_entity_id
+        "
+        return dbr.list(db,sql,params)
+    }
+
+    obtenerPkUsr::&db,id
+    {
+        new params { @"id": id }
+        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
+    }
+
+    prepareView::&db,&params,&data
+    {
+        isNew = (@@(params,"$_entity_id") == "_new")
+
+        if isNew
+        {
+            new args
+            {
+                @"cRequisicion": @cRequisicion
+            }
+
+            data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @cRequisicion",args)
+            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
+            data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
+        }
+        else
+        {
+            if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
+        }
+    }
+
+    con.list::&db,&params
+    {
+        new data
+        {
+            @"consolidados*": entity.list(db,params)
+        }
+
+        return data
+    }
+
+    con.read::&db,&params
+    {
+        new data
+        {
+            @"cmpreq*": entity.read(db,params)
+        }
+        do prepareView(db,params,data)
+
+        return data
+    }
+
+    con.blank::&db,&params
+    {
+        new data {}
+        do prepareView(db,params,data)
+
+        return data
+    }
+
+    con.create::&db,&params,&data
+    {
+        @use_transaction = @false
+        
+        serie = trim(@@(data,"$serie"))
+        folio = abs(@@(data,"#folio"))
+
+        do dbr.begin(db)
+
+        iblock = dbr.folios.id_block(db,@cRequisicion,serie)
+        if folio > 0 { folio = dbr.folios.set_new(db,iblock,folio,3) }
+        else { folio = dbr.folios.set_new(db,iblock,dbr.folios.get_new(db,iblock),3) }
+        ref infoFolio = dbr.folios.info(db,iblock,folio)
+
+        referencia = serie + padleft(str(folio),6,"0")
+
+        new cmpreq
+        {
+            @"sys_user": @@(@http_context, "$session/user/uid")
+
+            @"referencia": referencia
+            @"folio": @@(infoFolio,"#sys_pk")
+            @"fecha*": str2dt(trim(@@(data,"$fecha")))
+            @"flimite*": @null
+            @"subtotal": 0
+            @"impuestos": 0
+            @"divisa": @@(data,"#divisa")
+            @"tcambio": @@(data,"#tcambio")
+            @"status": @@(data,"#status")
+            @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"consolidacion": @true
+        }
+
+        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        
+        ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
+
+        do dbr.commit(db)
+
+        @url_redir = path.concat(@CMP_CONSOLIDADO, @@(entity,"$sys_pk") + "/")
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            do record.clear(data)
+            data<"form*"> : FormData
+
+            do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
+    }
+
+    con.update::&db,&params,&data
+    {
+        @use_transaction = @false
+
+        do dbr.begin(db)
+
+        new cmpreq
+        {
+            @"sys_timestamp*": now()
+            @"sys_lastuser": @@(@http_context, "$session/user/uid")
+            @"sys_recver": @@(data,"#sys_recver")
+
+            @"fecha*": str2dt(trim(@@(data,"$fecha")))
+            @"flimite*": @null
+            @"subtotal": 0
+            @"impuestos": 0
+            @"tcambio": @@(data,"#tcambio")
+            @"notas": trim(@@(data,"$notas"))
+        }
+
+        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+
+        ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
+
+        do dbr.commit(db)
+
+        @url_redir = @CMP_REQUISICION
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            do record.clear(data)
+            data<"form*"> : FormData
+
+            do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
+    }
+
+    con.delete::&db,&params
+    {
+        do rise_error(500,"Acción no implementada")
+    }
+}

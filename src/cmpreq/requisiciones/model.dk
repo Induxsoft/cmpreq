@@ -45,6 +45,7 @@ module ""
         IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
         req.subtotal,
         req.impuestos,
+        (req.subtotal + req.impuestos) AS importe,
         req.periodo,
         req.tcambio,
         req.`status`,
@@ -415,7 +416,7 @@ module ""
 
         do dbr.commit(db)
 
-        @url_redir = "/!/cmpreq/requisiciones/"+@@(entity,"$sys_pk")+"/"
+        @url_redir = path.concat(@CMP_REQUISICION, @@(entity,"$sys_pk") + "/")
 
         exception
         {

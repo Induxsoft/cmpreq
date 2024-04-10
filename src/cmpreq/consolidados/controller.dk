@@ -1,0 +1,30 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    switch @@(@http_context,"$request/get/_view")
+    {
+        case "buscar-requisicion"
+        {
+            point @list to buscarRequisicion
+            break
+        }
+        case "obtener-productos"
+        {
+            point @read to obtenerProductos
+        }
+        default
+        {
+            @form_view = "form.new.dk"
+
+            if @@(@http_context,"$request/get/_entity_id") != "_new" { @form_view = "form.edt.dk" }
+
+            point @read to con.read
+            point @blank to con.blank
+            point @create to con.create
+            point @update to con.update
+            point @delete to con.delete
+            break
+        }
+    }
+}
