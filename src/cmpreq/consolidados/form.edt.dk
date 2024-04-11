@@ -12,24 +12,19 @@ module "form.dk"
     do @context.begin(@crud_context)
 
     ref @_GET = ifnull(@("&parameters"),record.create())
-    ref cmpreq = ifnull(@("&./cmpreq"),record.create())
-    ref dcmpreq = ifnull(@("&./dcmpreq"),list.create())
+    ref cmpcon = ifnull(@("&./cmpcon"),record.create())
+    ref dcmpcon = ifnull(@("&./dcmpcon"),list.create())
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
-
-    @zimpuesto = @("$./zimpuesto")
 
     curr_ndt = ndatetime.now()
     curr_year = ndatetime.year(curr_ndt)
     curr_month = ndatetime.month(curr_ndt)
     curr_day = ndatetime.day(curr_ndt)
+    empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
 
-    if @("$error/message") != "" {
-        _detalle = @("$./form/_detalle")
-        if _detalle != "" { ref dcmpreq = from.json(_detalle) }
-    }
-    if list.count(dcmpreq) <= 0 { ref dcmpreq = from.json('[{},{},{},{},{},{},{},{},{},{}]') }
+    if list.count(dcmpcon) <= 0 { ref dcmpcon = from.json(empty_rows) }
 
     header_act::
     {
@@ -46,7 +41,7 @@ module "form.dk"
 
     new nav_config
     {
-        @"title": @@(cmpreq,"$referencia")
+        @"title": @@(cmpcon,"$referencia")
         @"buttons*": general_act
         @"urlexit": @CMP_REQUISICION
         member @"hidden" { @"print": @true }
@@ -64,40 +59,40 @@ module "form.dk"
         {
             div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
 
-            form(method="POST" action="./" id="form-edt-cmpreq")
+            form(method="POST" action="./" id="form-edt-cmpcon")
             {
-                input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
-                input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
+                input(type="hidden" name="sys_pk" value="#<@@(cmpcon,'#sys_pk')>")
+                input(type="hidden" name="sys_recver" value="#<@@(cmpcon, '#sys_recver')>")
 
                 div(class="row gx-2")
                 {
                     div(class="col-lg-2 col-md-3 col-sm-6")
                     {
                         label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
-                        input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpreq)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
+                        input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpcon)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
                     }
 
                     div(class="col-lg-2 col-md-3 col-sm-6")
                     {
                         label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
-                        input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpreq)>" id="txt_flimite" title="Fecha y hora límite para completarla")
+                        input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpcon)>" id="txt_flimite" title="Fecha y hora límite para completarla")
                     }
 
                     div(class="col-lg-2 col-md-3 col-sm-6")
                     {
                         label(class="form-label" "for"="txt_divisa"){$"Divisa:"}
-                        input(class="form-control form-control-sm rounded-0" type="text" value="#<@@(cmpreq,'$ddivisa')>" id="txt_divisa" "data-codigo"="#<@@(cmpreq,'$cdivisa')>" disabled="")
+                        input(class="form-control form-control-sm rounded-0" type="text" value="#<@@(cmpcon,'$ddivisa')>" id="txt_divisa" "data-codigo"="#<@@(cmpcon,'$cdivisa')>" disabled="")
                     }
 
                     div(class="col-lg-2 col-md-3 col-sm-6")
                     {
                         label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}
-                        input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
+                        input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpcon)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
                     }
                 }
 
                 label(class="form-label" "for"="txt_notas"){$"Notas:"}
-                textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',cmpreq)>"}
+                textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',cmpcon)>"}
 
                 input(type="hidden" name="_requisiciones" value="" id="txt_requisiciones")
             }
@@ -108,8 +103,8 @@ module "form.dk"
             {
                 div(class="nav nav-tabs mb-2" id="nav-tab" role="tablist")
                 {
-                    button(class="nav-link active" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" type="button" role="tab" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
-                    button(class="nav-link" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" type="button" role="tab" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
+                    button(class="nav-link py-1 active" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" type="button" role="tab" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
+                    button(class="nav-link py-1" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" type="button" role="tab" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
                 }
             }
             div(class="tab-content")
@@ -125,7 +120,7 @@ module "form.dk"
                     }
                     div(class="" id="div_tbl_requisiciones" style="width:auto; min-width:100%; max-height:55vh; display:flex;")
                     {
-                        "edit-table"(id="tbl_requisiciones" data="#<to.json(dcmpreq)>" "auto-confirm"="true" style="width:100%;"
+                        "edit-table"(id="tbl_requisiciones" data="#<to.json(dcmpcon)>" "auto-confirm"="true" style="width:100%;"
                         "row-height"="1.2rem"
                         "control-styles"="
                             tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
@@ -160,7 +155,7 @@ module "form.dk"
                 {
                     div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:55vh; display:flex;")
                     {
-                        "edit-table"(id="tbl_productos" data="#<to.json(dcmpreq)>" "auto-confirm"="true" style="width:100%;"
+                        "edit-table"(id="tbl_productos" data="#<empty_rows>" "auto-confirm"="true" style="width:100%;"
                         "row-height"="1.2rem"
                         "control-styles"="
                             tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
@@ -210,7 +205,7 @@ module "form.dk"
             document.addEventListener("DOMContentLoaded", () => {
                 consolidados.edit.url_get_productos = "#<@URL_OBTENER_PRODUCTOS>";
                 consolidados.edit.url_exit = "#<@CMP_REQUISICIONES>";
-                consolidados.edit.formId = "form-edt-cmpreq";
+                consolidados.edit.formId = "form-edt-cmpcon";
                 consolidados.edit.tableReqId = "tbl_requisiciones";
                 consolidados.edit.tableProdId = "tbl_productos";
                 consolidados.edit.init();

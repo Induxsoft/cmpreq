@@ -88,6 +88,8 @@ var consolidados =
 
             this.setKeyboardShortcuts();
             this.setEventTables();
+            this.sumarTotales();
+            this.agregarProductos();
         },
 
         setKeyboardShortcuts()
@@ -131,7 +133,7 @@ var consolidados =
             
             txt_requisiciones.value = _reqsId.join(",");
             
-            // trigger(this.form,"submit")
+            trigger(this.form,"submit");
         },
 
         cleanDataArray(edt) {
@@ -180,6 +182,21 @@ var consolidados =
         removerProducto()
         {
             
+        },
+
+        agregarProductos()
+        {
+            if (!this.tableReq) return;
+
+            let table = this.tableReq;
+            let array = table?.DataArray ?? [];
+            for (let i = 0; i < array.length; i++) {
+                const obj = array[i];
+                if (Object.entries(obj??{}).length < table.Columns.length) continue;
+                if (!obj.sys_pk) continue;
+
+                this.obtenerProductos(obj.sys_pk);
+            }
         },
 
         obtenerProductos(cmpreqId)

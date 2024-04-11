@@ -3,7 +3,6 @@
 module ""
 {
     @table_name = "cmpreq"
-    @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
     @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
@@ -89,10 +88,20 @@ module ""
             INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
         WHERE NOT IFNULL(req.sys_deleted,0)
             AND NOT IFNULL(req.consolidacion,0)
-            AND req.en IS NULL
-            AND req.`status` = 1
-            AND (req.referencia LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
+            #<condition>
         "
+
+        if trim(@@(params,"$search")) != "" {
+            condition = "
+                AND req.en IS NULL 
+                AND req.`status` = 1 
+                AND (req.referencia LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
+            "
+        }
+        else if trim(@@(params,"$idcon")) != "" {
+            condition = "AND req.en = @idcon"
+        }
+
         return dbr.list(db,ftext(sql),params)
     }
 
@@ -125,6 +134,12 @@ module ""
         return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
     }
 
+    obtenerRequisiciones::&db,idcon
+    {
+        new params { @"idcon": idcon }
+        return buscarRequisicion(db,params)
+    }
+
     prepareView::&db,&params,&data
     {
         isNew = (@@(params,"$_entity_id") == "_new")
@@ -142,7 +157,8 @@ module ""
         }
         else
         {
-            if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
+            if not(field.exist(data,"cmpcon")) { data<"cmpcon*"> : entity.read(db,params) }
+            data<"dcmpcon*"> : obtenerRequisiciones(db,@@(params,"$_entity_id"))
         }
     }
 
@@ -160,7 +176,7 @@ module ""
     {
         new data
         {
-            @"cmpreq*": entity.read(db,params)
+            @"cmpcon*": entity.read(db,params)
         }
         do prepareView(db,params,data)
 
@@ -191,7 +207,7 @@ module ""
 
         referencia = serie + padleft(str(folio),6,"0")
 
-        new cmpreq
+        new cmpcon
         {
             @"sys_user": @@(@http_context, "$session/user/uid")
 
@@ -208,9 +224,9 @@ module ""
             @"consolidacion": @true
         }
 
-        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        if trim(@@(data,"$flimite")) != "" { cmpcon<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
         
-        ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
+        ref entity = @@(entity.create(db,params,cmpcon),"&cmpcon")
 
         do dbr.commit(db)
 
@@ -239,7 +255,7 @@ module ""
 
         do dbr.begin(db)
 
-        new cmpreq
+        new cmpcon
         {
             @"sys_timestamp*": now()
             @"sys_lastuser": @@(@http_context, "$session/user/uid")
@@ -253,9 +269,19 @@ module ""
             @"notas": trim(@@(data,"$notas"))
         }
 
-        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        if trim(@@(data,"$flimite")) != "" { cmpcon<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
 
-        ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
+        ref entity = @@(entity.update(db,params,cmpcon),"&cmpcon")
+
+        new args
+        {
+            @"conId": @@(entity,"#sys_pk")
+            @"reqsId": trim(@@(data,"$_requisiciones"))
+        }
+        
+        do dbr.execute(db,"UPDATE cmpreq SET en = NULL WHERE en = @conId",args)
+        // Agregar requisiciones directas a requisición consolidada
+        if @@(args,"$reqsId") != "" { do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN(@reqsId)",args) }
 
         do dbr.commit(db)
 
