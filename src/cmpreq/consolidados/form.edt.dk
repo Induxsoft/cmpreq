@@ -24,7 +24,20 @@ module "form.dk"
     curr_day = ndatetime.day(curr_ndt)
     empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
 
+    if @("$error/message") != "" {
+        _detalle = @("$./form/_detalle")
+        if _detalle != "" { ref dcmpcon = from.json(_detalle) }
+    }
+    
     if list.count(dcmpcon) <= 0 { ref dcmpcon = from.json(empty_rows) }
+    else
+    {
+        er = list.count(from.json(empty_rows)) - list.count(dcmpcon)
+        repeat er
+        {
+            do list.add(dcmpcon,record.create())
+        }
+    }
 
     header_act::
     {
@@ -95,6 +108,7 @@ module "form.dk"
                 textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',cmpcon)>"}
 
                 input(type="hidden" name="_requisiciones" value="" id="txt_requisiciones")
+                input(type="hidden" name="_detalle" value="" id="txt_detalle")
             }
 
             div(class="alert alert-danger rounded-0 mb-1 py-0 d-none" role="alert" id="tbl_alerts"){$""}

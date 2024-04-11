@@ -109,6 +109,8 @@ module ""
     {
         sql = "
         SELECT
+            p.sys_pk,
+            p.sys_guid,
             d.ref_req,
             d.producto,
             p.codigo,
@@ -254,7 +256,6 @@ module ""
         @use_transaction = @false
 
         do dbr.begin(db)
-
         new cmpcon
         {
             @"sys_timestamp*": now()
@@ -270,19 +271,21 @@ module ""
         }
 
         if trim(@@(data,"$flimite")) != "" { cmpcon<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
-
-        ref entity = @@(entity.update(db,params,cmpcon),"&cmpcon")
-
         new args
         {
-            @"conId": @@(entity,"#sys_pk")
+            @"conId": trim(@@(params,"$_entity_id"))
             @"reqsId": trim(@@(data,"$_requisiciones"))
         }
         
         do dbr.execute(db,"UPDATE cmpreq SET en = NULL WHERE en = @conId",args)
         // Agregar requisiciones directas a requisición consolidada
-        if @@(args,"$reqsId") != "" { do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN(@reqsId)",args) }
+        if @@(args,"$reqsId") != "" { do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN("+@@(args,"$reqsId")+")",args) }
 
+        ref tt = dbr.rec(db,"SELECT ROUND(SUM(subtotal),4) subtotal, ROUND(SUM(impuestos),4) impuestos FROM cmpreq WHERE en = @conId",args)
+        cmpcon<"subtotal"> : @@(tt,"#subtotal")
+        cmpcon<"impuestos"> : @@(tt,"#impuestos")
+
+        ref entity = @@(entity.update(db,params,cmpcon),"&cmpcon")
         do dbr.commit(db)
 
         @url_redir = @CMP_REQUISICION

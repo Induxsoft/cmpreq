@@ -20,7 +20,7 @@ module ""
         CONCAT('$',FORMAT(req.subtotal,4)) AS subtotal,
         CONCAT('$',FORMAT(req.impuestos,4)) AS impuestos,
         CONCAT('$',FORMAT((req.subtotal + req.impuestos),4)) AS total,
-        IF(req.consolidacion,'Si','No') AS consolidacion,
+        IF(req.consolidacion,'C','D') AS tipo,
         IFNULL(con.referencia,'') AS consolidadoen,
         IFNULL(pda.partida,'') AS partida,
         stt.const AS `status`,
@@ -164,6 +164,8 @@ module ""
 
     buscarProducto::&db,&params
     {
+        do setZonaImpuesto(db,params)
+        
         sql = "
         SELECT
             p.sys_pk,
@@ -199,6 +201,7 @@ module ""
             INNER JOIN cfgimpuesto AS imp ON imp.sys_pk = p.impuestos
         WHERE (p.codigo LIKE CONCAT('%',@search,'%') OR p.descripcion LIKE CONCAT('%',@search,'%'))
         "
+        
         return dbr.list(db,sql,params)
     }
 
@@ -229,6 +232,19 @@ module ""
         return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
     }
 
+    setZonaImpuesto::&db,&params
+    {
+        /**
+        * Zona de impuesto
+        * 1 => 1 = cInterior
+        * 2 => -1 = cFrontera
+        */
+        
+        zimpuesto = dbr.vars.getd(db,"cmpreq_zimpuesto","1")
+        if parse.num(zimpuesto) > 1 { zimpuesto = "-1" }
+        params<"zimpuesto"> : zimpuesto
+    }
+
     prepareList::&db,&params,&data
     {
         data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
@@ -255,17 +271,10 @@ module ""
         }
         else
         {
-            /**
-            * Zona de impuesto
-            * 1 => 1 = cInterior
-            * 2 => -1 = cFrontera
-            */
-            zimpuesto = dbr.vars.getd(db,"cmpreq_zimpuesto","1")
-            params<"zimpuesto"> : zimpuesto
+            do setZonaImpuesto(db,params)
 
             if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
             data<"dcmpreq*"> : dbr.list(db,@childs_query,params)
-            data<"zimpuesto"> : zimpuesto
         }
     }
 
@@ -279,7 +288,7 @@ module ""
             conditions = conditions + "AND (req.referencia LIKE CONCAT('%',@fil_text,'%') OR IFNULL(pda.partida,'') LIKE CONCAT('%',@fil_text,'%'))"
         }
 
-        //#region filter-date-range
+        // filter-date-range [start]
         new req_date_fields
         {
             @"1": "req.fecha" // Elaboración
@@ -338,7 +347,7 @@ module ""
                 break
             }
         }
-        //#endregion
+        // filter-date-range [end]
 
         conditions = ftext(conditions)
         @list_query = ftext(@list_query)

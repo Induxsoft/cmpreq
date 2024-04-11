@@ -116,7 +116,7 @@ var requisiciones =
     edit: {
         formId:"", form:null,
         tableId:"", table:null,
-        divAlerts:"", zimpuesto:"", lastUnit:"",
+        divAlerts:"", lastUnit:"",
 
         init()
         {
@@ -128,7 +128,6 @@ var requisiciones =
             this.table = document.getElementById(this.tableId);
 
             btn_submit.addEventListener("click", () => { this.save() });
-            ik_producto.onBeforeSearch = (url) => { return this.prepareIkProducto(url) }
             ik_producto.addEventListener("change",(data) => { this.agregarProducto(data) });
             btn_add_row.addEventListener("click", () => { this.table.AddRow() });
             btn_del_row.addEventListener("click", () => { this.table.DeleteCurrentRow() });
@@ -181,12 +180,6 @@ var requisiciones =
             txt_detalle.value = JSON.stringify(_detalle);
 
             trigger(this.form,"submit");
-        },
-
-        prepareIkProducto(url)
-        {
-            let zimpuesto = (this.zimpuesto > 1) ? -1 : 1;
-            return url.replace("@zimpuesto",zimpuesto);
         },
 
         agregarProducto(p)

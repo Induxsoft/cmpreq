@@ -18,8 +18,6 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
-    @zimpuesto = @("$./zimpuesto")
-
     curr_ndt = ndatetime.now()
     curr_year = ndatetime.year(curr_ndt)
     curr_month = ndatetime.month(curr_ndt)
@@ -220,7 +218,6 @@ module "form.dk"
                 requisiciones.edit.formId = "form-edt-cmpreq";
                 requisiciones.edit.tableId = "tbl_productos";
                 requisiciones.edit.divAlerts = "#tbl_alerts";
-                requisiciones.edit.zimpuesto = "#<@zimpuesto>";
                 requisiciones.edit.init();
                 InduxsoftNumberFields.Init();
             });

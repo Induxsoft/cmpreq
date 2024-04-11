@@ -17,7 +17,7 @@ module
 	//* ======================================== [ _PACKAGE ]
 	@URL_BUSCAR_UNIDAD_ORG = "/!/cmpreq/requisiciones/?_view=buscar-unidad-org&search=@search"
 	@URL_BUSCAR_PARTIDA_PRE = "/!/cmpreq/requisiciones/?_view=buscar-partida-pre&search=@search"
-	@URL_BUSCAR_PRODUCTO = "/!/cmpreq/requisiciones/?_view=buscar-producto&search=@search&zimpuesto=@zimpuesto"
+	@URL_BUSCAR_PRODUCTO = "/!/cmpreq/requisiciones/?_view=buscar-producto&search=@search"
 	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
 	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
 	@URL_OBTENER_PRODUCTOS = "/!/cmpreq/consolidados/{ireq}/obtener-productos/"

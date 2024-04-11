@@ -69,6 +69,7 @@ var consolidados =
         formId:"", form:null,
         tableReqId:"", tableReq:null,
         tableProdId:"", tableProd:null,
+        fullProdArray: [],
         url_get_productos:"", url_exit:"",
 
         init()
@@ -119,19 +120,20 @@ var consolidados =
             if (!this.form.reportValidity()) return;
 
             const txt_requisiciones = document.getElementById("txt_requisiciones");
-            let table = this.tableReq;
-            let array = table?.DataArray??[];
+            const txt_detalle = document.getElementById("txt_detalle");
+            
+            let _detalle = this.cleanDataArray(this.tableReq);
             let _reqsId = [];
 
-            for (let i = 0; i < array.length; i++) {
-                const obj = array[i];
+            for (let i = 0; i < _detalle.length; i++) {
+                const data = _detalle[i];
                 
-                if (Object.entries(obj??{}).length < table.Columns.length) continue;
-                if (_reqsId.includes(obj.sys_pk)) continue;
-                _reqsId.push(obj.sys_pk);
+                if (_reqsId.includes(data.sys_pk)) continue;
+                _reqsId.push(data.sys_pk);
             }
             
             txt_requisiciones.value = _reqsId.join(",");
+            txt_detalle.value = JSON.stringify(_detalle);
             
             trigger(this.form,"submit");
         },
@@ -146,6 +148,7 @@ var consolidados =
             let table = this.tableReq;
             if (!data) return;
             if (!table) return;
+            if (!this.validarRequisicion(data)) return;
 
             let _requisiciones = this.cleanDataArray(table);
             let available_row =(_requisiciones.length > 0) ? _requisiciones.length : 0;
@@ -160,28 +163,73 @@ var consolidados =
 
         removerRequisicion()
         {
-            this.tableReq.DeleteCurrentRow();
+            if (!this.tableReq) return;
+
+            let table = this.tableReq;
+            let array = table?.DataArray ?? [];
+            let curr_row = table.CurrentRowIndex();
+            let curr_obj = array[curr_row] ?? {};
+
+            if (curr_row < 0) return;
+            if (!table.DeleteRow(curr_row)) return;
+
             this.sumarTotales();
+            this.removerProductos(curr_obj.sys_pk);
         },
 
         agregarProducto(data)
         {
-            let table = this.tableProd;
             if (!data) return;
-            if (!table) return;
+            if (!this.tableProd) return;
 
-            let _productos = this.cleanDataArray(table);
-            let available_row =(_productos.length > 0) ? _productos.length : 0;
+            let table = this.tableProd;
+            let array = table?.DataArray ?? [];
+            this.fullProdArray.push(data);
 
-            if (table.DataArray.length === _productos.length) table.AddRow();
+            let index = array.findIndex(obj => obj.sys_pk === data.sys_pk && obj.precio === data.precio);
+            if(index < 0)
+            {
+                let _productos = this.cleanDataArray(table);
+                let available_row = (_productos.length > 0) ? _productos.length : 0;
 
-            table.DataArray[available_row] = data;
-            table.UpdateRow(available_row);
+                if (array.length === _productos.length) table.AddRow();
+                
+                table.DataArray[available_row] = data;
+                table.UpdateRow(available_row);   
+            }
+            else
+            {
+                array[index]["cantidad"] += data.cantidad;
+                array[index]["subtotal"] += data.subtotal;
+                array[index]["impuestos"] += data.impuestos;
+                array[index]["importe"] += data.importe;
+
+                table.UpdateRow(index);
+            }
         },
 
-        removerProducto()
+        removerProducto(index, data=null)
         {
-            
+            if (index < 0) return;
+            if (!this.tableProd) return;
+
+            let table = this.tableProd;
+            let array = table?.DataArray ?? [];
+
+            if (!data) table.DeleteRow(index);
+            else
+            {
+                array[index]["cantidad"] -= data.cantidad;
+                array[index]["subtotal"] -= data.subtotal;
+                array[index]["impuestos"] -= data.impuestos;
+                array[index]["importe"] -= data.importe;
+
+                if (array[index]["cantidad"] <= 0) table.DeleteRow(index);
+                else table.UpdateRow(index);
+
+                let idx = this.fullProdArray.findIndex(obj => obj.sys_pk === data.sys_pk && obj.precio === data.precio && obj.ref_req === data.ref_req);
+                if (idx >= 0) this.fullProdArray.splice(idx,1);
+            }
         },
 
         agregarProductos()
@@ -190,6 +238,7 @@ var consolidados =
 
             let table = this.tableReq;
             let array = table?.DataArray ?? [];
+
             for (let i = 0; i < array.length; i++) {
                 const obj = array[i];
                 if (Object.entries(obj??{}).length < table.Columns.length) continue;
@@ -199,8 +248,28 @@ var consolidados =
             }
         },
 
+        removerProductos(cmpreqId)
+        {
+            if (!cmpreqId) return;
+
+            let table = this.tableProd;
+            let array = table?.DataArray ?? [];
+
+            let _productos = this.fullProdArray.filter(obj => obj.ref_req === cmpreqId);
+            for (let i = 0; i < _productos.length; i++) {
+                const data = _productos[i];
+                
+                let index = array.findIndex(obj => obj.sys_pk === data.sys_pk && obj.precio === data.precio);
+                this.removerProducto(index,data);
+            }
+            
+            console.log(this.fullProdArray);
+        },
+
         obtenerProductos(cmpreqId)
         {
+            if (!cmpreqId) return;
+
             let url = this.url_get_productos.replace("{ireq}",cmpreqId);
 
             fetch(url).then(response => response.json())
@@ -215,6 +284,22 @@ var consolidados =
                 });
             })
             .catch(error => console.error(error));
+        },
+
+        validarRequisicion(data)
+        {
+            const txt_divisa = document.getElementById("txt_divisa");
+            if (data.cdivisa !== txt_divisa.getAttribute("data-codigo").toUpperCase()) {
+                alert("No es posible agregar la requisición por la diferencia de divisas.");
+                return false;
+            }
+
+            let table = this.tableReq;
+            let array = table?.DataArray ?? [];
+            let found = array.find(obj => obj.sys_pk === data.sys_pk);
+            if (found) return false;
+
+            return true;
         },
 
         sumarTotales()
