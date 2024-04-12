@@ -12,6 +12,40 @@ function trigger(elementOrSelector,eventName)
     element.dispatchEvent(event);
 }
 
+function url_encode(url)
+{
+    let _url = btoa(url);
+    
+    _url = _url.replaceAll("=","|");
+    _url = _url.replaceAll("/","_");
+    _url = _url.replaceAll("+","-");
+    
+    return _url;
+}
+
+function url_decode(url)
+{
+    url = url.replaceAll("|","=");
+    url = url.replaceAll("_","/");
+    url = url.replaceAll("-","+");
+    
+    return atob(url);
+}
+
+function disableControls(elementsId=[], value=true)
+{
+    elementsId.forEach(id => {
+        document.getElementById(id).disabled = value;
+    });
+}
+
+function hideControls(elementsId=[], value=true)
+{
+    elementsId.forEach(id => {
+        document.getElementById(id).hidden = value;
+    });
+}
+
 /**
  * @param {string} selector selector del contenedor de la alerta.
  * @param {string} content contenido HTML de la alerta.

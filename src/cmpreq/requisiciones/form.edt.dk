@@ -18,6 +18,11 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
+    @show_btn_xaprobar = (@@(cmpreq,"#status") == 0)
+    @show_btn_aprobar = (@@(cmpreq,"#status") == 1)
+    @show_btn_nproceso = (@@(cmpreq,"#status") == 10)
+    @show_btn_cancelar = containsword(@@(cmpreq,"$status"), "0,1,10,20")
+
     curr_ndt = ndatetime.now()
     curr_year = ndatetime.year(curr_ndt)
     curr_month = ndatetime.month(curr_ndt)
@@ -59,12 +64,14 @@ module "form.dk"
 
     header_act::
     {
+        btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
+        
         #$
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_approve"){$"#<@ICON_CHECK> Aprobar"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_inprocess"){$"#<@ICON_PROCESS> En proceso"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_complete"){$"#<@ICON_FILE_CHECK> Completar"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_cancel"){$"#<@ICON_FILE_CANCEL> Cancelar"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
+        button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@@(@cmpreq_status,'#xaprobar')>" id="btn_xaprobar"){$"Por Aprobar"}
+        button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@@(@cmpreq_status,'#aprobado')>" id="btn_aprobar"){$"#<@ICON_CHECK> Aprobar"}
+        button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@@(@cmpreq_status,'#nproceso')>" id="btn_nproceso"){$"#<@ICON_PROCESS> En proceso"}
+        button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@@(@cmpreq_status,'#cancelado')>" id="btn_cancelar"){$"#<@ICON_FILE_CANCEL> Cancelar"}
+        button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
         #!
     }
 
@@ -215,6 +222,7 @@ module "form.dk"
 		script(type="text/javascript")
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
+                requisiciones.edit.url_change_status = "#<@URL_CHANGE_STATUS>";
                 requisiciones.edit.formId = "form-edt-cmpreq";
                 requisiciones.edit.tableId = "tbl_productos";
                 requisiciones.edit.divAlerts = "#tbl_alerts";

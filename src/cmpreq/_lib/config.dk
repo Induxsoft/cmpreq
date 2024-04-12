@@ -8,6 +8,16 @@ module
 	@cRequisicion = 70 // id del tipo de documento (cdocumentos)
 	@default_max_rows = 250 // limite de registros para las vistas de lista
 
+	new @cmpreq_status
+	{
+		@"borrador": 0
+		@"xaprobar": 1
+		@"aprobado": 10
+		@"nproceso": 20
+		@"completado": 30
+		@"cancelado": 99
+	}
+
 	//* ======================================== [ _STATIC RESOURCES ]
 	@CSS_MAIN = "/$/cmpreq/css/main.css"
 	@JS_MAIN = "/$/cmpreq/js/main.js"
@@ -21,9 +31,11 @@ module
 	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
 	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
 	@URL_OBTENER_PRODUCTOS = "/!/cmpreq/consolidados/{ireq}/obtener-productos/"
+	@URL_CHANGE_STATUS = "/!/cmpreq/requisiciones/{ireq}/change-status/"
 
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"
+	@CMP_COTIZACION = "/!/cmpreq/cotizaciones/"
 
 	//* ======================================== [ AUTHORIZATIONS ]
 }

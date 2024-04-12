@@ -1,0 +1,88 @@
+#include "dkli.dkh"
+#!
+module "list.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+
+    do @context.begin(@crud_context)
+
+	@_entities_type = @("$parameters/_entities_type")
+	table_id = "tbl_"+@_entities_type
+
+    new table_definition
+    {
+        @"datatable*": @('&./')
+        @"table_footer": "Mostrando los primeros # registros ordenadas por código"
+        member @"columns"
+        {
+            member @"sys_pk" { @"caption":"Llave Primaria" }
+            member @"sys_dtcreated" { @"caption":"Fecha de creación" }
+			member @"sys_info" { @"caption": "Sys Info" } 
+            member @"_actions" 
+            { 
+                @"caption":"Acciones" 
+                @"template":ftext('
+                    <div style="display:flex;gap:8px;justify-content:center;width:100%;" class="no-print">
+                        <a href="./${DataRow.sys_pk}/" style="cursor:pointer; text-decoration: none; padding: 0px 8px; background-color: #F5F5F5; color: #000;">Editar</a>
+                        <button onclick="InduxsoftCrudlModel.Delete(${DataRow.sys_pk})" style="cursor:pointer; border: none; outline: none; padding: 0px 8px; background-color: #F5F5F5; color: #000;">Eliminar</button>
+                    </div>')
+                @"no-print":@true
+            }
+        }
+    }
+
+    header_act::
+    { 
+        #$
+        a(href="./_new/" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Agregar"}
+    }
+
+    #! point general_act to header_act
+
+    new nav_config
+    {
+        @"title": @_entities_type
+        @"buttons*": general_act
+        @"urlexit": "/"
+        // @"actions*": dbr.apps.itemactions(@('&database'),"alimento","action","",0)
+        // @"reports*": dbr.apps.itemactions(@('&database'),"alimento","report","",0)
+        @"jscurrentcontext": "getCurrentContext"
+    }
+
+    #$ div(class="container-fluid p-0")
+    {
+        #! do uie.printV12FormBar(nav_config)
+
+        #$ div(id="work_area" class="container-section mt-1 p-2 pt-0")
+        {
+            p{$"#<@('$error/message')>"}
+
+            form(action="./" method="GET" id="form_search" class="no-print my-1 d-flex py-1")
+            {
+                "filter-text"(
+                    "id"="ft_search"
+                    "text-field"="s"
+                    "placeholder"="Buscar ..."
+                    "form"="#form_search"
+                    "value"="#<@@(@@(@crud_context,'&http/request/get'),'$s')>"
+                    "auto-submit"="true"
+                    "class"="w-100"
+                ){$""}
+            }
+            #! do uie.dbeditable(table_definition, "#<table_id>")
+        }
+
+		#$
+		script(type="text/javascript")
+		{$'
+			function getCurrentContext()
+			{
+				const table = document.getElementById("#<table_id>");
+				const id = (table?.DataArray[table.CurrentRowIndex()]?.sys_pk ?? "");
+    			return { item_id:id, context: {} }
+			}
+		'}
+    }
+}

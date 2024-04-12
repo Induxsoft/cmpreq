@@ -353,6 +353,25 @@ module ""
         @list_query = ftext(@list_query)
     }
 
+    req.changeStatus::&db,&params,&data
+    {
+        new cmpreq
+        {
+            @"sys_pk": @@(data,"#sys_pk")
+            @"sys_timestamp*": now()
+            @"sys_lastuser": @@(@http_context, "$session/user/uid")
+            @"sys_recver": @@(data,"#sys_recver")
+
+            @"status": @@(data,"#status")
+        }
+
+        if @@(data,"#status") == @@(@cmpreq_status,"#aprobado") { cmpreq<"uaprobo"> : obtenerPkUsr(db, @@(@http_context, "$session/user/uid")) }
+
+        ref entity = dbr.save(db,"cmpreq",cmpreq)
+
+        return entity
+    }
+
     req.list::&db,&params
     {
         do evaluateFilters(params)

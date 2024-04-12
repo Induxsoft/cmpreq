@@ -116,7 +116,7 @@ var requisiciones =
     edit: {
         formId:"", form:null,
         tableId:"", table:null,
-        divAlerts:"", lastUnit:"",
+        divAlerts:"", lastUnit:"", url_change_status:"",
 
         init()
         {
@@ -135,6 +135,7 @@ var requisiciones =
             this.table.setInputKey("edt_codigo",ik_producto);
             this.table.setInputKey("edt_descripcion",ik_producto);
             this.setKeyboardShortcuts();
+            this.setEventBtnStatus();
             this.setEventTable();
             this.sumarTotales();
         },
@@ -170,6 +171,15 @@ var requisiciones =
             };
         },
 
+        setEventBtnStatus()
+        {
+            const buttons = document.querySelectorAll(".btn-status");
+            buttons.forEach(btn => {
+                let status = Number(btn.getAttribute("data-status"));
+                btn.addEventListener("click", () => { this.changeStatus(status) });
+            });
+        },
+
         save()
         {
             if (!this.form.reportValidity()) return;
@@ -180,6 +190,31 @@ var requisiciones =
             txt_detalle.value = JSON.stringify(_detalle);
 
             trigger(this.form,"submit");
+        },
+
+        changeStatus(status)
+        {
+            if (!this.url_change_status) return;
+
+            let fd = new FormData(this.form);
+            fd.append("status",status);
+            let endpoint = this.url_change_status.replace("{ireq}",fd.get("sys_pk"));
+
+            const onSuccess = (data) =>
+            {
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
+
+                this.form.elements["sys_recver"] = data.sys_recver;
+
+                if (data.status === 20) window.location.href = "/!/cmpreq/cotizaciones/_new/";
+                else window.location.reload();
+            }
+            const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
+
+            InduxsoftCrudlModel.InvokeService(endpoint,fd,onSuccess,onFailure,"PATCH",false,true,"",true);
         },
 
         agregarProducto(p)

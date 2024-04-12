@@ -24,6 +24,11 @@ module ""
             point @read to obtenerFultimo
             break
         }
+        case "change-status"
+        {
+            point @update to req.changeStatus
+            break
+        }
         default
         {
             @form_view = "form.new.dk"
