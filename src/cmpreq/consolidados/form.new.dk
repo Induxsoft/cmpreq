@@ -20,11 +20,6 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
-    curr_ndt = ndatetime.now()
-    curr_year = ndatetime.year(curr_ndt)
-    curr_month = ndatetime.month(curr_ndt)
-    curr_day = ndatetime.day(curr_ndt)
-
     new sel_serie
     {
         @"datatable*": list_series

@@ -1,1 +1,19 @@
-[{"pattern":"/_program/","routes":[{"route":"/requisiciones/","entity_type":"requisiciones"},{"route":"/consolidados/","entity_type":"consolidados"},{"route":"/cotizaciones/","entity_type":"cotizaciones"}]}]
+[
+    {
+        "pattern": "/_program/",
+        "routes": [
+            {
+                "route": "/requisiciones/",
+                "entity_type": "requisiciones"
+            },
+            {
+                "route": "/consolidados/",
+                "entity_type": "consolidados"
+            },
+            {
+                "route": "/solcot/",
+                "entity_type": "solcot"
+            }
+        ]
+    }
+]

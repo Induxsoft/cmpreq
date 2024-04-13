@@ -1,0 +1,20 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    switch @@(@http_context,"$request/get/_view")
+    {
+        case "cmp-in-process"
+        {
+            @form_view = "cmp.in.process.dk"
+
+            point @read to cmp.read
+            break
+        }
+        default
+        {
+            // code...
+            break
+        }
+    }
+}

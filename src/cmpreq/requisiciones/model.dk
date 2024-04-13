@@ -50,6 +50,7 @@ module ""
         req.tcambio,
         req.`status`,
         IFNULL(req.notas,'') AS notas,
+        IF(req.consolidacion,'C','D') AS tipo,
         IFNULL(pda.partida,'') AS partida_pre,
         IFNULL(pto.ejercicio,'') AS ejercicio,
         IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
@@ -67,6 +68,8 @@ module ""
 
     @childs_query = "
     SELECT
+        p.codigo,
+        p.descripcion,
     -- Campos visibles en el editable
         p.codigo AS edt_codigo,
         p.descripcion AS edt_descripcion,
@@ -365,7 +368,7 @@ module ""
             @"status": @@(data,"#status")
         }
 
-        if @@(data,"#status") == @@(@cmpreq_status,"#aprobado") { cmpreq<"uaprobo"> : obtenerPkUsr(db, @@(@http_context, "$session/user/uid")) }
+        if @@(data,"#status") == @stt_aprobado { cmpreq<"uaprobo"> : obtenerPkUsr(db, @@(@http_context, "$session/user/uid")) }
 
         ref entity = dbr.save(db,"cmpreq",cmpreq)
 

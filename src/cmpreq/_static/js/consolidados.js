@@ -67,16 +67,16 @@ var consolidados =
 
     edit: {
         formId:"", form:null,
-        tableReqId:"", tableReq:null,
-        tableProdId:"", tableProd:null,
+        tblReqId:"", tableReq:null,
+        tblProdId:"", tableProd:null,
         fullProdArray: [],
-        url_get_productos:"", url_exit:"",
+        url_change_status:"", url_get_productos:"", url_solcot:"", url_exit:"",
 
         init()
         {
             this.form = document.getElementById(this.formId);
-            this.tableReq = document.getElementById(this.tableReqId);
-            this.tableProd = document.getElementById(this.tableProdId);
+            this.tableReq = document.getElementById(this.tblReqId);
+            this.tableProd = document.getElementById(this.tblProdId);
             const btn_submit = document.getElementById("btn_submit");
             const btn_add_req = document.getElementById("btn-add-req");
             const btn_rem_req = document.getElementById("btn-rem-req");
@@ -88,7 +88,7 @@ var consolidados =
             ik_requisicion.addEventListener("change", (data) => { this.agregarRequisicion(data) });
 
             this.setKeyboardShortcuts();
-            this.setEventTables();
+            this.setEventBtnStatus();
             this.sumarTotales();
             this.agregarProductos();
         },
@@ -110,9 +110,13 @@ var consolidados =
             });
         },
 
-        setEventTables()
+        setEventBtnStatus()
         {
-            
+            const buttons = document.querySelectorAll(".btn-status");
+            buttons.forEach(btn => {
+                let status = Number(btn.getAttribute("data-status"));
+                btn.addEventListener("click", () => { this.changeStatus(status) });
+            });
         },
 
         save()
@@ -136,6 +140,29 @@ var consolidados =
             txt_detalle.value = JSON.stringify(_detalle);
             
             trigger(this.form,"submit");
+        },
+
+        changeStatus(status)
+        {
+            if (!this.url_change_status) return;
+
+            let fd = new FormData(this.form);
+            fd.append("status",status);
+            let endpoint = this.url_change_status.replace("{ireq}",fd.get("sys_pk"));
+
+            const onSuccess = (data) =>
+            {
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
+
+                if (data.status === 20 && this.url_solcot) window.location.href = this.url_solcot;
+                else window.location.reload();
+            }
+            const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
+
+            InduxsoftCrudlModel.InvokeService(endpoint,fd,onSuccess,onFailure,"PATCH",false,true,"",true);
         },
 
         cleanDataArray(edt) {

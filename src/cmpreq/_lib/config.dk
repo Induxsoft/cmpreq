@@ -4,38 +4,45 @@ module
 {
 	if not(isset("@http_context")) { ref @http_context = @@(@crud_context,"&http") }
 
-	//* ======================================== [ CONSTANTS ]
-	@cRequisicion = 70 // id del tipo de documento (cdocumentos)
-	@default_max_rows = 250 // limite de registros para las vistas de lista
+	@curr_ndt = ndatetime.now()
+    @curr_year = ndatetime.year(@curr_ndt)
+    @curr_month = ndatetime.month(@curr_ndt)
+    @curr_day = ndatetime.day(@curr_ndt)
 
-	new @cmpreq_status
-	{
-		@"borrador": 0
-		@"xaprobar": 1
-		@"aprobado": 10
-		@"nproceso": 20
-		@"completado": 30
-		@"cancelado": 99
-	}
+	//* ======================================== [ CONSTANTS ]
+	// cdocumentos
+	@cCotizacion = 1
+	@cRequisicion = 70
+	// cmpreq_status
+	@stt_borrador = 0
+	@stt_xaprobar = 1
+	@stt_aprobado = 10
+	@stt_nproceso = 20
+	@stt_completado = 30
+	@stt_cancelado = 99
+
+	@default_max_rows = 250 // limite de registros para las vistas de lista
 
 	//* ======================================== [ _STATIC RESOURCES ]
 	@CSS_MAIN = "/$/cmpreq/css/main.css"
 	@JS_MAIN = "/$/cmpreq/js/main.js"
 	@JS_REQUISICIONES = "/$/cmpreq/js/requisiciones.js"
 	@JS_CONSOLIDADOS = "/$/cmpreq/js/consolidados.js"
+	@JS_SOLCOT = "/$/cmpreq/js/solcot.js"
 
 	//* ======================================== [ _PACKAGE ]
 	@URL_BUSCAR_UNIDAD_ORG = "/!/cmpreq/requisiciones/?_view=buscar-unidad-org&search=@search"
 	@URL_BUSCAR_PARTIDA_PRE = "/!/cmpreq/requisiciones/?_view=buscar-partida-pre&search=@search"
 	@URL_BUSCAR_PRODUCTO = "/!/cmpreq/requisiciones/?_view=buscar-producto&search=@search"
-	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
 	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
+	@URL_BUSCAR_PROVEEDOR = "/!/compras/compras/?_view=buscar-proveedor&search=@search"
+	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
 	@URL_OBTENER_PRODUCTOS = "/!/cmpreq/consolidados/{ireq}/obtener-productos/"
 	@URL_CHANGE_STATUS = "/!/cmpreq/requisiciones/{ireq}/change-status/"
 
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"
-	@CMP_COTIZACION = "/!/cmpreq/cotizaciones/"
+	@CMP_SOLCOT = "/!/cmpreq/solcot/"
 
 	//* ======================================== [ AUTHORIZATIONS ]
 }

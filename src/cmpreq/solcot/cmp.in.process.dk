@@ -1,0 +1,385 @@
+#include "dkli.dkh"
+#!
+module "form.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+	#include "../_lib/icons.dk"
+    #include "../_lib/lib.dk"
+
+    do @context.begin(@crud_context)
+
+    ref entity = ifnull(@("&./entity"),record.create())
+    ref detail = ifnull(@("&./detail"),list.create())
+    ref list_series =ifnull(@("&./list_series"),list.create())
+
+	@_entities_type = @("$parameters/_entities_type")
+	@_entity_id = @("$parameters/_entity_id")
+
+    @tipo = toupper(@@(entity,"$tipo"))
+    @curr_status = @@(entity,"#status")
+    @show_btn_xaprobar = (@curr_status == @stt_borrador)
+    @show_btn_aprobar = (@curr_status == @stt_xaprobar)
+    @show_btn_nproceso = (@curr_status == @stt_aprobado)
+    @show_btn_cancelar = containsword(@curr_status, "0,1,10,20")
+    @enable_editing = (@curr_status == @stt_borrador || @curr_status == @stt_xaprobar)
+
+    empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
+    _requisiciones = empty_rows
+    _productos = empty_rows
+
+    if @("$error/message") != "" {
+        _detalle = @("$./form/_detalle")
+        if _detalle != "" { ref detail = from.json(_detalle) }
+    }
+    
+    if list.count(detail) <= 0 { ref detail = from.json(empty_rows) }
+    else
+    {
+        er = list.count(from.json(empty_rows)) - list.count(detail)
+        repeat er
+        {
+            do list.add(detail,record.create())
+        }
+    }
+
+    switch @tipo
+    {
+        case "C" { _requisiciones = to.json(detail) }
+        case "D" { _productos = to.json(detail) }
+    }
+
+    new sel_serie
+    {
+        @"datatable*": list_series
+        @"id": "sel_serie"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"style": "max-width:6rem;"
+            @"name": "serie"
+            @"required": ""
+        }
+        @"value_field": "serie"
+        @"text_field": "serie"
+        new member "attr_options"
+        {
+            @"data-iblock": "#<@@(row,'#sys_pk')>"
+        }
+    }
+
+    header_act::
+    {
+        btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
+        
+        if @show_btn_xaprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_xaprobar>" title="Cambiar estado de la requisición"){$"#<@ICON_HOURGLASS> Por Aprobar"} #! }
+        if @show_btn_aprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_aprobado>" title="Cambiar estado de la requisición"){$"#<@ICON_CHECK> Aprobar"} #! }
+        if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
+        if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
+
+        // #$
+        // button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
+        // #!
+    }
+
+    point general_act to header_act
+
+    new nav_config
+    {
+        @"title": @@(entity,"$referencia")
+        @"buttons*": general_act
+        @"urlexit": @CMP_REQUISICION
+        member @"hidden" { @"print": @true }
+    }
+
+    #$
+    div(class="container")
+    {
+        link(href="#<@CSS_MAIN>" rel="stylesheet")
+
+        #! do uie.printV12FormBar(nav_config)
+
+        #$
+        div(id="work_area" class="container-section")
+        {
+            div(class="row #<ifstr(@tipo=='D','','d-none')>")
+            {
+                div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"Unidad Organizacional:"}
+                    p(class="my-0"){$"#<@@(entity,'$unidad_org')>"}
+                }
+                div(class="col-lg-2 col-md-2 col-sm-12 d-lg-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"Ejercicio:"}
+                    p(class="my-0"){$"#<@@(entity,'$ejercicio')>"}
+                }
+                div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"Partida Presupuestal:"}
+                    p(class="my-0"){$"#<@@(entity,'$partida_pre')>"}
+                }
+            }
+
+            div(class="d-flex justify-content-between flex-wrap gap-2")
+            {
+                div(class="d-flex align-items-center gap-1 #<ifstr(@tipo=='D','','d-none')>")
+                {
+                    h6(class="my-0"){$"Periodo:"}
+                    p(class="my-0"){$"#<@@(entity,'$periodo')>"}
+                }
+                div(class="d-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"Elaboración:"}
+                    p(class="my-0"){$"#<@@(entity,'$fecha')>"}
+                }
+                div(class="d-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"Vencimiento:"}
+                    p(class="my-0"){$"#<@@(entity,'$flimite')>"}
+                }
+                div(class="d-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"Divisa:"}
+                    p(class="my-0" "data-codigo"="#<@@(entity,'$cdivisa')>" id="txt_divisa"){$"#<@@(entity,'$ddivisa')>"}
+                }
+                div(class="d-flex align-items-center gap-1")
+                {
+                    h6(class="my-0"){$"T.Cambio:"}
+                    p(class="my-0"){$"#<@@(entity,'$tcambio')>"}
+                }
+            }
+
+            h6(class=""){$"Notas:"}
+            textarea(class="form-control rounded-0" name="" id="txt_notas" maxlength="32000" readonly=""){$"#<@@(entity,'$notas')>"}
+
+            nav(class="mt-2")
+            {
+                div(class="nav nav-tabs mb-2" id="nav-tab" role="tablist")
+                {
+                    button(class="nav-link py-1 #<ifstr(@tipo=='C','active','d-none')>" type="button" role="tab" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
+                    button(class="nav-link py-1 #<ifstr(@tipo=='D','active','')>" type="button" role="tab" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
+                    button(class="nav-link py-1" type="button" role="tab" id="nav-solicitudes-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-solicitudes" "aria-controls"="nav-solicitudes" "aria-selected"="false"){$"Solicitudes"}
+                }
+            }
+            div(class="tab-content")
+            {
+                div(class="tab-pane fade #<ifstr(@tipo=='C','show active','d-none')>" id="nav-requisiciones" role="tabpanel" "aria-labelledby"="nav-requisiciones-tab")
+                {
+                    div(class="" id="div_tbl_requisiciones" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
+                    {
+                        "edit-table"(id="tbl_requisiciones" data="#<_requisiciones>" "auto-confirm"="true" style="width:100%;"
+                        "row-height"="1.2rem"
+                        "control-styles"="
+                            tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
+                            tr td { font-size:.8rem; }
+                            th { font-size:.9rem; outline:none !important; font-weight:500 !important; }
+                            #__table_input { font-size:unset !important; }
+                        ")
+                        {
+                            "edit-thead"
+                            {
+                                "edit-tr"
+                                {
+                                    "edit-th"(type="NoEditable" field="referencia"){$"Referencia"}
+                                    "edit-th"(type="NoEditable" field="unidad_org"){$"Unidad Organizacional"}
+                                    "edit-th"(type="NoEditable" field="ejercicio" textalign="center"){$"Ejercicio"}
+                                    "edit-th"(type="NoEditable" field="partida_pre"){$"Partida Presupuestal"}
+                                    "edit-th"(type="NoEditable" field="periodo" textalign="center"){$"Periodo"}
+                                    "edit-th"(type="NoEditable" field="fecha" textalign="center"){$"Elaboración"}
+                                    "edit-th"(type="NoEditable" field="flimite" textalign="center"){$"Vencimiento"}
+                                    "edit-th"(type="NoEditable" field="cdivisa" textalign="center"){$"Divisa"}
+                                    "edit-th"(type="NoEditable" field="tcambio" textalign="center"){$"T.Cambio"}
+                                    "edit-th"(type="NoEditable" field="subtotal" textalign="end" format="true" thousandssep="," decs="4"){$"Subtotal"}
+                                    "edit-th"(type="NoEditable" field="impuestos" textalign="end" format="true" thousandssep="," decs="4"){$"Impuestos"}
+                                    "edit-th"(type="NoEditable" field="importe" textalign="end" format="true" thousandssep="," decs="4"){$"Importe"}
+                                }
+                            }
+                        }
+                    }
+                }
+
+                div(class="tab-pane fade #<ifstr(@tipo=='D','show active','')>" id="nav-productos" role="tabpanel" "aria-labelledby"="nav-productos-tab")
+                {
+                    div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
+                    {
+                        "edit-table"(id="tbl_productos" data="#<_productos>" "auto-confirm"="true" style="width:100%;"
+                        "row-height"="1.2rem"
+                        "control-styles"="
+                            tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
+                            tr td { font-size:.8rem; }
+                            th { font-size:.9rem; outline:none !important; font-weight:500 !important; }
+                            #__table_input { font-size:unset !important; }
+                        ")
+                        {
+                            "edit-thead"
+                            {
+                                "edit-tr"
+                                {
+                                    "edit-th"(type="NoEditable" field="codigo"){$"Código"}
+                                    "edit-th"(type="NoEditable" field="descripcion"){$"Descripción"}
+                                    "edit-th"(type="NoEditable" field="unidad" textalign="center"){$"Unidad"}
+                                    "edit-th"(type="NoEditable" field="precio" textalign="end" format="true" thousandssep="," decs="4"){$"Precio"}
+                                    "edit-th"(type="NoEditable" field="cantidad" textalign="center"){$"Cantidad"}
+                                    "edit-th"(type="NoEditable" field="subtotal" textalign="end" format="true" thousandssep="," decs="4"){$"Subtotal"}
+                                    "edit-th"(type="NoEditable" field="impuestos" textalign="end" format="true" thousandssep="," decs="4"){$"Impuestos"}
+                                    "edit-th"(type="NoEditable" field="importe" textalign="end" format="true" thousandssep="," decs="4"){$"Importe"}
+                                    "edit-th"(type="NoEditable" field="notas"){$"Notas"}
+                                }
+                            }
+                        }
+                    }
+                }
+
+                div(class="tab-pane fade" id="nav-solicitudes" role="tabpanel" "aria-labelledby"="nav-solicitudes-tab")
+                {
+                    div(class="d-flex justify-content-end align-items-center gap-1 px-2 my-1" id="tbl_action_bar")
+                    {
+                        small(class="flex-grow-1 text-muted"){$""}
+
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" "data-bs-toggle"="modal" "data-bs-target"="#mdl_solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" "data-bs-toggle"="modal" "data-bs-target"="#mdl_solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-rem-solcot" title="Remover solicitud de cotización"){$"#<@ICON_FILE_DASH> Remover"}
+                    }
+                    div(class="" id="div_tbl_solicitudes" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
+                    {
+                        "edit-table"(id="tbl_solicitudes" data="#<empty_rows>" "auto-confirm"="true" style="width:100%;"
+                        "row-height"="1.2rem"
+                        "control-styles"="
+                            tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
+                            tr td { font-size:.8rem; }
+                            th { font-size:.9rem; outline:none !important; font-weight:500 !important; }
+                            #__table_input { font-size:unset !important; }
+                        ")
+                        {
+                            "edit-thead"
+                            {
+                                "edit-tr"
+                                {
+                                    "edit-th"(type="NoEditable" field="referencia"){$"Referencia"}
+                                    "edit-th"(type="NoEditable" field="proveedor"){$"Proveedor"}
+                                    "edit-th"(type="NoEditable" field="fenvio" textalign="center"){$"Fecha de envio"}
+                                    "edit-th"(type="NoEditable" field="completada" textalign="center"){$"Completada"}
+                                    "edit-th"(type="NoEditable" field="cancelada" textalign="center"){$"Cancelada"}
+                                    "edit-th"(type="NoEditable" field="notas"){$"Notas"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            div(class="d-flex justify-content-between w-100 bg-light p-2 border" id="div_summary")
+            {
+                b{$"Subtotal: " span(id="lbl_subtotal"){$""}}
+                b{$"Impuesto: " span(id="lbl_impuesto"){$""}}
+                b{$"Total: " span(id="lbl_importe"){$""}}
+            }
+        }
+
+        div(class="modal fade" id="mdl_solcot" tabindex="-1" "aria-hidden"="true" "data-bs-backdrop"="false")
+        {
+            div(class="modal-dialog modal-dialog-centered modal-dialog-scrollable")
+            {
+                div(class="modal-content rounded-0 p-0 border-0 shadow")
+                {
+                    div(class="modal-header p-3")
+                    {
+                        h6(class="modal-title"){$"Solicitar cotización"}
+                        button(type="button" class="btn-close btn-sm" "data-bs-dismiss"="modal" "aria-label"="Close"){$""}
+                    }
+                    form(class="modal-body row gx-2 p-4 bg-white" method="POST" action="./" id="form-solcot")
+                    {
+                        input(type="hidden" name="sys_pk" value="0")
+                        input(type="hidden" name="sys_recver" value="0")
+                        input(type="hidden" name="req" value="#<@@(entity,'#sys_pk')>")
+
+                        div(class="col-lg-6 col-md-6 col-sm-6")
+                        {
+                            label(class="form-label" "for"="txt_referencia"){$"Referencia:"}
+                            div(class="input-group input-group-sm")
+                            {
+                                ##
+                                do uie.dbSelect(sel_serie)
+                                ##
+                                input(class="form-control form-control-sm rounded-0 text-end" type="number" name="folio" value="" id="txt_folio" min="1" step="1" placeholder="<A>")
+                                button(class="btn btn-light btn-sm rounded-0 border" type="button" id="btn_get_folio" title="Obtener folio disponible para la serie seleccionada"){$"#<@ICON_HDOTS>"}
+                            }
+                        }
+
+                        div(class="col-lg-6 col-md-6 col-sm-6")
+                        {
+                            label(class="form-label" "for"="txt_fenvio"){$"Fecha de envio:"}
+                            input(class="form-control form-control-sm rounded-0" type="date" name="fenvio" value="" id="txt_fenvio" title="Fecha oficial de envío al proveedor")
+                        }
+
+                        div(class="col-12")
+                        {
+                            label(class="form-label" "for"="ik_proveedor"){$"Proveedor:"}
+                            "input-key"(name="iproveedor" id="ik_proveedor" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="nombre" "data-value"="{}"
+                                "data-source"="#<@URL_BUSCAR_PROVEEDOR>" "box-title-text"="Seleccione un proveedor" columns="codigo,nombre,tipo" colcaptions="Código,Nombre,Tipo"
+                                "control-styles"="
+                                    #input_search_container, #input_description_container,
+                                    #button_search_container, #button_clear_container {
+                                        height: calc(1.5em + .5rem + 2px) !important;
+                                        padding: .25rem .5rem !important;
+                                        font-size: .875rem !important;
+                                    }
+                                "
+                            ){$""}
+                        }
+
+                        div(class="col-12")
+                        {
+                            label(class="form-label" "for"="txt_redaccion"){$"Redacción:"}
+                            textarea(class="form-control rounded-0" name="redaccion" id="txt_redaccion" maxlength="32000"){$""}
+                        }
+
+                        div(class="col-12")
+                        {
+                            label(class="form-label" "for"="txt_notas"){$"Notas:"}
+                            textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$""}
+                        }
+                    }
+                    div(class="modal-footer")
+                    {
+                        button(type="button" class="btn btn-sm btn-primary rounded-0" id="btn-submit-form-solcot"){$"Aceptar"}
+                        button(type="button" class="btn btn-sm btn-light rounded-0" id="btn-cancel-form-solcot"){$"Cancelar"}
+                    }
+                }
+            }
+        }
+
+        #$
+        script(src="#<@JS_MAIN>"){$""}
+        script(src="#<@JS_REQUISICIONES>"){$""}
+        script(src="#<@JS_CONSOLIDADOS>"){$""}
+        script(src="#<@JS_SOLCOT>"){$""}
+		script(type="text/javascript")
+		{$'
+            document.addEventListener("DOMContentLoaded", () => {
+                switch ("#<@tipo>") {
+                    case "C":
+                    {
+                        consolidados.edit.url_get_productos = "#<@URL_OBTENER_PRODUCTOS>";
+                        consolidados.edit.tableReq = document.getElementById("tbl_requisiciones");
+                        consolidados.edit.tableProd = document.getElementById("tbl_productos");
+
+                        consolidados.edit.sumarTotales();
+                        consolidados.edit.agregarProductos();
+                        break;
+                    }
+                    case "D":
+                    {
+                        requisiciones.edit.table = document.getElementById("tbl_productos");
+
+                        requisiciones.edit.sumarTotales();
+                        break;
+                    }
+                }
+            });
+		'}
+    }
+}

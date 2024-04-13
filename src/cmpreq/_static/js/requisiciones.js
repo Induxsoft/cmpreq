@@ -116,7 +116,7 @@ var requisiciones =
     edit: {
         formId:"", form:null,
         tableId:"", table:null,
-        divAlerts:"", lastUnit:"", url_change_status:"",
+        divAlerts:"", lastUnit:"", url_change_status:"", url_solcot:"",
 
         init()
         {
@@ -207,9 +207,7 @@ var requisiciones =
                     return;
                 }
 
-                this.form.elements["sys_recver"] = data.sys_recver;
-
-                if (data.status === 20) window.location.href = "/!/cmpreq/cotizaciones/_new/";
+                if (data.status === 20 && this.url_solcot) window.location.href = this.url_solcot;
                 else window.location.reload();
             }
             const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }

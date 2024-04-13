@@ -1,0 +1,106 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    @table_name = "solcot"
+    @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
+
+    @create_fields = @sys_fields + ",referencia,folio,proveedor,fenvio,redaccion,notas,req,fresp,cotizacion,completa,cancelada,motivo,ucreo,urecibio,ucancelo"
+    @update_fields = @sys_fields + ",proveedor,fenvio,redaccion,notas,fresp,cotizacion,completa,cancelada,motivo,ucreo,urecibio,ucancelo"
+    
+    @create_exclude_fields = "sys_lastuser"
+    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user"
+    
+    @create_alias_fields = ""
+    @update_alias_fields = ""
+
+    obtenerPkUsr::&db,id
+    {
+        new params { @"id": id }
+        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
+    }
+
+    prepareView::&db,&params,&data
+    {
+        switch @@(params,"$_view")
+        {
+            case "cmp-in-process"
+            {
+                new args
+                {
+                    @"doctype": @cCotizacion
+                }
+
+                data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @doctype",args)
+                break
+            }
+            default
+            {
+                // code...
+                break
+            }
+        }
+    }
+
+    cmp.read::&db,&params
+    {
+        _context = url_dcode(field.dstr(params,"_context","{}"))
+        if _context == "" { _context = "{}" }
+
+        ref data = from.json(_context)
+        do prepareView(db,params,data)
+
+        return data
+    }
+
+    sol.create::&db,&params,&data
+    {
+        @use_transaction = @false
+
+        serie = trim(@@(data,"$serie"))
+        folio = abs(@@(data,"#folio"))
+
+        do dbr.begin(db)
+
+        iblock = dbr.folios.id_block(db,@cRequisicion,serie)
+        if folio > 0 { folio = dbr.folios.set_new(db,iblock,folio,3) }
+        else { folio = dbr.folios.set_new(db,iblock,dbr.folios.get_new(db,iblock),3) }
+        ref infoFolio = dbr.folios.info(db,iblock,folio)
+        referencia = serie + padleft(str(folio),6,"0")
+
+        new solcot
+        {
+            @"referencia": referencia
+            @"folio": @@(infoFolio,"#sys_pk")
+            @"proveedor": @@(data,"#iproveedor")
+            @"fenvio*": @null
+            @"redaccion": @@(data,"$redaccion")
+            @"notas": @@(data,"notas")
+            @"rec": @@(data,"#req")
+            @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
+        }
+
+        if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }
+
+        ref entity = entity.create(db,@null,data)
+        do dbr.commit(db)
+
+        return entity
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            do record.clear(data)
+            data<"form*"> : FormData
+
+            do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
+    }
+}

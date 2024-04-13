@@ -50,6 +50,7 @@ module ""
         req.tcambio,
         req.`status`,
         IFNULL(req.notas,'') AS notas,
+        IF(req.consolidacion,'C','D') AS tipo,
         CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
         stt.const AS cstatus,
         dvs.codigo AS cdivisa

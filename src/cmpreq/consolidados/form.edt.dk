@@ -18,11 +18,30 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
-    curr_ndt = ndatetime.now()
-    curr_year = ndatetime.year(curr_ndt)
-    curr_month = ndatetime.month(curr_ndt)
-    curr_day = ndatetime.day(curr_ndt)
+    @curr_status = @@(cmpcon,"#status")
+    @show_btn_xaprobar = (@curr_status == @stt_borrador)
+    @show_btn_aprobar = (@curr_status == @stt_xaprobar)
+    @show_btn_nproceso = (@curr_status == @stt_aprobado)
+    @show_btn_cancelar = containsword(@curr_status, "0,1,10,20")
+    @enable_editing = (@curr_status == @stt_borrador || @curr_status == @stt_xaprobar)
+
     empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
+
+    if @curr_status == @stt_nproceso {
+        endpoint = path.concat(@CMP_SOLCOT,@_entity_id)
+        endpoint = path.concat(endpoint,"cmp-in-process")
+        new context
+        {
+            @"entity*": cmpcon
+            @"detail*": dcmpcon
+        }
+        jsonContext = to.json(context)
+        jsonContext = url_encode(jsonContext)
+        endpoint = path.concat(endpoint,ftext("?_context=#<jsonContext>"))
+
+        @http_context<"response/headers/location"> : endpoint
+        return
+    }
 
     if @("$error/message") != "" {
         _detalle = @("$./form/_detalle")
@@ -41,12 +60,15 @@ module "form.dk"
 
     header_act::
     {
+        btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
+        
+        if @show_btn_xaprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_xaprobar>" title="Cambiar estado de la requisición"){$"#<@ICON_HOURGLASS> Por Aprobar"} #! }
+        if @show_btn_aprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_aprobado>" title="Cambiar estado de la requisición"){$"#<@ICON_CHECK> Aprobar"} #! }
+        if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
+        if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
+        
         #$
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_approve"){$"#<@ICON_CHECK> Aprobar"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_inprocess"){$"#<@ICON_PROCESS> En proceso"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_complete"){$"#<@ICON_FILE_CHECK> Completar"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_cancel"){$"#<@ICON_FILE_CANCEL> Cancelar"}
-        button(class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
+        button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
         #!
     }
 
@@ -68,7 +90,7 @@ module "form.dk"
         #! do uie.printV12FormBar(nav_config)
 
         #$
-        div(id="work_area" class="container-section")
+        div(id="work_area" class="container-section #<ifstr(@enable_editing,'','disabled-all')>")
         {
             div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
 
@@ -217,11 +239,13 @@ module "form.dk"
 		script(type="text/javascript")
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
+                consolidados.edit.url_change_status = "#<@URL_CHANGE_STATUS>";
                 consolidados.edit.url_get_productos = "#<@URL_OBTENER_PRODUCTOS>";
+                consolidados.edit.url_solcot = "#<@CMP_SOLCOT>";
                 consolidados.edit.url_exit = "#<@CMP_REQUISICIONES>";
                 consolidados.edit.formId = "form-edt-cmpcon";
-                consolidados.edit.tableReqId = "tbl_requisiciones";
-                consolidados.edit.tableProdId = "tbl_productos";
+                consolidados.edit.tblReqId = "tbl_requisiciones";
+                consolidados.edit.tblProdId = "tbl_productos";
                 consolidados.edit.init();
                 InduxsoftNumberFields.Init();
             });

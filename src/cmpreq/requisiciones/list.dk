@@ -16,21 +16,16 @@ module "list.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	table_id = "tbl_"+@_entities_type
 
-    curr_ndt = ndatetime.now()
-    curr_year = ndatetime.year(curr_ndt)
-    curr_month = ndatetime.month(curr_ndt)
-    curr_day = ndatetime.day(curr_ndt)
-
     fdr_year_opt = ""
-    for i = 2024; i <= curr_year { fdr_year_opt = fdr_year_opt + str(i) + "," }
+    for i = 2024; i <= @curr_year { fdr_year_opt = fdr_year_opt + str(i) + "," }
     fdr_year_opt = rremove(fdr_year_opt,1)
 
     new fdr_init
     {
         @"fdr_mode": field.dstr(@_GET,"fdr_mode","month")
         // [month]
-        @"fdr_year": field.dnum(@_GET,"fdr_year",curr_year)
-        @"fdr_month": field.dnum(@_GET,"fdr_month",curr_month)
+        @"fdr_year": field.dnum(@_GET,"fdr_year",@curr_year)
+        @"fdr_month": field.dnum(@_GET,"fdr_month",@curr_month)
         // [lastdays]
         @"fdr_range": field.dnum(@_GET,"fdr_range",30)
         // [range]

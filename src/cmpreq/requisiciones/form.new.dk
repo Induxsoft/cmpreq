@@ -22,11 +22,6 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
-    curr_ndt = ndatetime.now()
-    curr_year = ndatetime.year(curr_ndt)
-    curr_month = ndatetime.month(curr_ndt)
-    curr_day = ndatetime.day(curr_ndt)
-
     new sel_serie
     {
         @"datatable*": list_series
@@ -175,7 +170,7 @@ module "form.dk"
                                 {$""
                                     #!
                                     syear = lib.form('ejercicio','nm',cmpreq)
-                                    if syear == 0 { syear = curr_year }
+                                    if syear == 0 { syear = @curr_year }
 
                                     ref list_ejercicios = lib.list_years(10,5)
                                     for i = 0; i < list.count(list_ejercicios)
