@@ -78,10 +78,6 @@ module "form.dk"
         if @show_btn_aprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_aprobado>" title="Cambiar estado de la requisición"){$"#<@ICON_CHECK> Aprobar"} #! }
         if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
         if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
-
-        // #$
-        // button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
-        // #!
     }
 
     point general_act to header_act
@@ -239,9 +235,11 @@ module "form.dk"
                     {
                         small(class="flex-grow-1 text-muted"){$""}
 
+                        small(class="text-muted"){$"|"}
+
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" "data-bs-toggle"="modal" "data-bs-target"="#mdl_solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar"}
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" "data-bs-toggle"="modal" "data-bs-target"="#mdl_solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar"}
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-rem-solcot" title="Remover solicitud de cotización"){$"#<@ICON_FILE_DASH> Remover"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-del-solcot" title="Remover solicitud de cotización"){$"#<@ICON_FILE_DASH> Remover"}
                     }
                     div(class="" id="div_tbl_solicitudes" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
@@ -261,7 +259,9 @@ module "form.dk"
                                     "edit-th"(type="NoEditable" field="referencia"){$"Referencia"}
                                     "edit-th"(type="NoEditable" field="proveedor"){$"Proveedor"}
                                     "edit-th"(type="NoEditable" field="fenvio" textalign="center"){$"Fecha de envio"}
-                                    "edit-th"(type="NoEditable" field="completada" textalign="center"){$"Completada"}
+                                    "edit-th"(type="NoEditable" field="cotizacion" textalign="center"){$"Cotización"}
+                                    "edit-th"(type="NoEditable" field="fcotizacion" textalign="center"){$"Fecha cotización"}
+                                    "edit-th"(type="NoEditable" field="completa" textalign="center"){$"Completada"}
                                     "edit-th"(type="NoEditable" field="cancelada" textalign="center"){$"Cancelada"}
                                     "edit-th"(type="NoEditable" field="notas"){$"Notas"}
                                 }
@@ -294,7 +294,7 @@ module "form.dk"
                     {
                         input(type="hidden" name="sys_pk" value="0")
                         input(type="hidden" name="sys_recver" value="0")
-                        input(type="hidden" name="req" value="#<@@(entity,'#sys_pk')>")
+                        input(type="hidden" name="ref_req" value="#<@@(entity,'#sys_pk')>")
 
                         div(class="col-lg-6 col-md-6 col-sm-6")
                         {
@@ -345,8 +345,8 @@ module "form.dk"
                     }
                     div(class="modal-footer")
                     {
-                        button(type="button" class="btn btn-sm btn-primary rounded-0" id="btn-submit-form-solcot"){$"Aceptar"}
-                        button(type="button" class="btn btn-sm btn-light rounded-0" id="btn-cancel-form-solcot"){$"Cancelar"}
+                        button(type="button" class="btn btn-sm btn-primary rounded-0" id="btn_submit"){$"Aceptar"}
+                        button(type="button" class="btn btn-sm btn-light rounded-0" id="btn_reset" "data-bs-dismiss"="modal"){$"Cancelar"}
                     }
                 }
             }
@@ -379,6 +379,13 @@ module "form.dk"
                         break;
                     }
                 }
+
+                solcot.url_exit = "#<@CMP_REQUISICION>";
+                solcot.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
+                solcot.url_solcot = "#<@CMP_SOLCOT>";
+                solcot.formId = "form-solcot";
+                solcot.tableId = "tbl_solicitudes";
+                solcot.init();
             });
 		'}
     }

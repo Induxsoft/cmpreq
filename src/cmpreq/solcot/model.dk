@@ -14,6 +14,32 @@ module ""
     @create_alias_fields = ""
     @update_alias_fields = ""
 
+    @read_query = "
+    SELECT
+        sol.sys_pk,
+        sol.sys_recver,
+        sol.referencia,
+        sol.folio AS ifolio,
+        sol.proveedor AS iproveedor,
+        IFNULL(DATE_FORMAT(sol.fenvio,'%Y-%m-%d'),'') AS fenvio,
+        IFNULL(sol.redaccion,'') AS redaccion,
+        IFNULL(sol.notas,'') AS notas,
+        sol.req,
+        IFNULL(sol.cotizacion,0) AS icotizacion,
+        IF(sol.completa,'Si','No') AS completa,
+        IF(sol.cancelada,'Si','No') AS cancelada,
+        b.serie, f.folio,
+        pdr.nombre AS proveedor,
+        IFNULL(cot.referencia,'') AS cotizacion,
+        IFNULL(DATE_FORMAT(cot.fecha,'%Y-%m-%d'),'') AS fcotizacion
+    FROM #<@table_name> AS sol
+        INNER JOIN foliosdocumentos AS f ON f.sys_pk = sol.folio
+        INNER JOIN blockdocumentos AS b ON b.sys_pk = f.block
+        INNER JOIN proveedor AS pdr ON pdr.sys_pk = sol.`proveedor`
+        LEFT JOIN compra AS cot ON cot.sys_pk = sol.cotizacion
+    WHERE sol.#<@keyfield> = @_entity_id
+    "
+
     obtenerPkUsr::&db,id
     {
         new params { @"id": id }
@@ -62,11 +88,11 @@ module ""
 
         do dbr.begin(db)
 
-        iblock = dbr.folios.id_block(db,@cRequisicion,serie)
+        iblock = dbr.folios.id_block(db,@cCotizacion,serie)
         if folio > 0 { folio = dbr.folios.set_new(db,iblock,folio,3) }
         else { folio = dbr.folios.set_new(db,iblock,dbr.folios.get_new(db,iblock),3) }
         ref infoFolio = dbr.folios.info(db,iblock,folio)
-        referencia = serie + padleft(str(folio),6,"0")
+        referencia = serie + padleft(str(folio),dbr.vars.get(db,"cmpreq_fix_ref_size"),"0")
 
         new solcot
         {
@@ -76,13 +102,13 @@ module ""
             @"fenvio*": @null
             @"redaccion": @@(data,"$redaccion")
             @"notas": @@(data,"notas")
-            @"rec": @@(data,"#req")
+            @"req": @@(data,"#ref_req")
             @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
         if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }
 
-        ref entity = entity.create(db,@null,data)
+        ref entity = entity.create(db,params,solcot)
         do dbr.commit(db)
 
         return entity
@@ -102,5 +128,15 @@ module ""
             do prepareView(db,params,data)
             do rise_error(code,error)
         }
+    }
+
+    sol.update::&db,&params,&data
+    {
+        // code...
+    }
+
+    sol.delete::&db,&params
+    {
+        do rise_error(500,"Acción no implementada")
     }
 }

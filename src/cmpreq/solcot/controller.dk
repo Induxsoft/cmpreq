@@ -13,7 +13,7 @@ module ""
         }
         default
         {
-            // code...
+            point @create to sol.create
             break
         }
     }

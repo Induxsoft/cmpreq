@@ -12,6 +12,25 @@ function trigger(elementOrSelector,eventName)
     element.dispatchEvent(event);
 }
 
+function path_concat(p1,p2,...px)
+{
+    p1 = p1.replaceAll("\\","/");
+    p2 = p2.replaceAll("\\","/");
+
+    let l1 = p1.split("/");
+    let l2 = p2.split("/");
+    
+    let path = [...l1, ...l2];
+
+    for (let i = 0; i < px.length; i++) {
+        const p = px[i].replaceAll("\\","/");
+        let l = p.split("/");
+        path.concat(l);
+    }
+
+    return path.join("/");
+}
+
 function url_encode(url)
 {
     let _url = btoa(url);

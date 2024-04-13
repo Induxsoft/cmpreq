@@ -5,6 +5,17 @@
         "help": "Variables del paquete: cmpreq",
         "vars": [
             {
+                "varname": "cmpreq_fix_ref_size",
+                "vardefault": "6",
+                "varvalue": "6",
+                "varcaption": "Tamaño de la referencia",
+                "varhelp": "Cantidad de '0' alineados a la izquierda del identificador numérico para la referencia.",
+                "vartype": "int",
+                "varinput": {
+                    "control": "number"
+                }
+            },
+            {
                 "varname": "cmpreq_zimpuesto",
                 "vardefault": "1",
                 "varvalue": "1",
@@ -22,6 +33,17 @@
                         "keyfield":"id",
                         "showfield":"const"
                     }
+                }
+            },
+            {
+                "varname": "cmpreq_redaccion_solcot",
+                "vardefault": "",
+                "varvalue": "",
+                "varcaption": "Redacción de solicitud",
+                "varhelp": "Redacción predeterminada para las solicitudes de cotización a proveedores.",
+                "vartype": "text",
+                "varinput": {
+                    "control": "textarea"
                 }
             }
         ]

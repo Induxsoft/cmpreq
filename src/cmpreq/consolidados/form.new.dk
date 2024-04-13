@@ -175,7 +175,7 @@ module "form.dk"
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
                 consolidados.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
-                consolidados.form.url_exit = "#<@CMP_REQUISICIONES>";
+                consolidados.form.url_exit = "#<@CMP_REQUISICION>";
                 consolidados.form.init();
                 InduxsoftNumberFields.Init();
             });

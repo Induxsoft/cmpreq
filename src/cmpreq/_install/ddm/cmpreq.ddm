@@ -752,19 +752,6 @@ model "erp.requisiciones"
         @"ucancelo" ref:"tuser" //usuario que canceló la solicitud de cotización
     }
 
-    //Detalle de la solicitud de cotización a proveedor
-    entity "dsolcot": "TableModel"
-    {
-        @"ref_solcot" ref:"solcot" required
-        @"ref_reqprod" ref:"dcmpreq" required
-        
-        index "dsolcot_idx1" unique
-        {
-            field "ref_solcot"
-            field "ref_reqprod"
-        }
-    }
-
     //* ======================================== [ ... ]
     // Permisos disponibles
     entity "sitem" : "TableModel"

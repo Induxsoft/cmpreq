@@ -242,7 +242,7 @@ module "form.dk"
                 consolidados.edit.url_change_status = "#<@URL_CHANGE_STATUS>";
                 consolidados.edit.url_get_productos = "#<@URL_OBTENER_PRODUCTOS>";
                 consolidados.edit.url_solcot = "#<@CMP_SOLCOT>";
-                consolidados.edit.url_exit = "#<@CMP_REQUISICIONES>";
+                consolidados.edit.url_exit = "#<@CMP_REQUISICION>";
                 consolidados.edit.formId = "form-edt-cmpcon";
                 consolidados.edit.tblReqId = "tbl_requisiciones";
                 consolidados.edit.tblProdId = "tbl_productos";
