@@ -5,40 +5,77 @@ module ""
     @table_name = "solcot"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
-    @create_fields = @sys_fields + ",referencia,folio,proveedor,fenvio,redaccion,notas,req,fresp,cotizacion,completa,cancelada,motivo,ucreo,urecibio,ucancelo"
-    @update_fields = @sys_fields + ",proveedor,fenvio,redaccion,notas,fresp,cotizacion,completa,cancelada,motivo,ucreo,urecibio,ucancelo"
+    // @create_fields = @sys_fields + ",referencia,folio,proveedor,fenvio,redaccion,notas,req,fresp,cotizacion,completa,cancelada,motivo,ucreo,urecibio,ucancelo"
+    // @update_fields = @sys_fields + ",fenvio,redaccion,notas,fresp,cotizacion,completa,cancelada,motivo,urecibio,ucancelo"
     
-    @create_exclude_fields = "sys_lastuser"
-    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user"
+    // @create_exclude_fields = "sys_lastuser"
+    // @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user"
     
-    @create_alias_fields = ""
-    @update_alias_fields = ""
+    // @create_alias_fields = ""
+    // @update_alias_fields = ""
 
-    @read_query = "
-    SELECT
-        sol.sys_pk,
-        sol.sys_recver,
-        sol.referencia,
-        sol.folio AS ifolio,
-        sol.proveedor AS iproveedor,
-        IFNULL(DATE_FORMAT(sol.fenvio,'%Y-%m-%d'),'') AS fenvio,
-        IFNULL(sol.redaccion,'') AS redaccion,
-        IFNULL(sol.notas,'') AS notas,
-        sol.req,
-        IFNULL(sol.cotizacion,0) AS icotizacion,
-        IF(sol.completa,'Si','No') AS completa,
-        IF(sol.cancelada,'Si','No') AS cancelada,
-        b.serie, f.folio,
-        pdr.nombre AS proveedor,
-        IFNULL(cot.referencia,'') AS cotizacion,
-        IFNULL(DATE_FORMAT(cot.fecha,'%Y-%m-%d'),'') AS fcotizacion
-    FROM #<@table_name> AS sol
-        INNER JOIN foliosdocumentos AS f ON f.sys_pk = sol.folio
-        INNER JOIN blockdocumentos AS b ON b.sys_pk = f.block
-        INNER JOIN proveedor AS pdr ON pdr.sys_pk = sol.`proveedor`
-        LEFT JOIN compra AS cot ON cot.sys_pk = sol.cotizacion
-    WHERE sol.#<@keyfield> = @_entity_id
-    "
+    @read_query = @qry_solcot
+
+    buscarProveedor::&db,&params
+    {
+        sql = "
+        SELECT 
+            pdr.sys_pk,
+            pdr.codigo,
+            pdr.nombre,
+            tpp.descripcion AS tipo,
+            dvs.sys_pk AS idivisa,
+            dvs.codigo AS cdivisa,
+            dvs.tcambio,
+            pdr.tasaiva,
+            IF(pdr.tasaiva=2,-1,1) AS zimpuesto,
+            zi.const AS zona_impuesto
+        FROM proveedor AS pdr
+            INNER JOIN tipoproveedor AS tpp ON tpp.sys_pk = pdr.tipo
+            INNER JOIN divisa AS dvs ON dvs.sys_pk = pdr.idivisa
+            INNER JOIN ctasasiva AS zi ON zi.id = pdr.tasaiva
+        WHERE #<condition>
+        "
+
+        if trim(@@(params,"$id")) != ""
+        {
+            condition = "(pdr.sys_pk = @id OR pdr.sys_guid = @id OR pdr.codigo = @id)"
+            return dbr.rec(db,ftext(sql),params)
+        }
+        if trim(@@(params,"$search")) != ""
+        {
+            condition = "(pdr.codigo LIKE CONCAT('%',@search,'%') OR pdr.nombre LIKE CONCAT('%',@search,'%') OR pdr.rfc LIKE CONCAT('%',@search,'%'))"
+            return dbr.list(db,ftext(sql),params)
+        }
+        return list.create()
+    }
+
+    buscarCotizacion::&db,&params
+    {
+        params<"doctype"> : @cCotizacion
+
+        sql = "
+        SELECT
+            cmp.sys_pk,
+            cmp.referencia,
+            DATE_FORMAT(cmp.fecha,'%Y-%m-%d') AS fecha,
+            DATE_FORMAT(cmp.vencimiento,'%Y-%m-%d') AS vencimiento
+        FROM compra AS cmp
+        WHERE NOT IFNULL(cmp.sys_deleted,0)
+            AND cmp.statusadministrativo = 2
+            AND cmp.documento = @doctype
+            AND cmp.iproveedor = @iproveedor
+            AND cmp.referencia LIKE CONCAT('%',@search,'%')
+        "
+        return dbr.list(db,sql,params)
+    }
+
+    obtenerSolicitudes::&db,reqid
+    {
+        new params { @"reqid": reqid }
+        @read_query = @read_query + " OR (NOT IFNULL(sol.sys_deleted,0) AND sol.req = @reqid)"
+        return dbr.list(db,ftext(@read_query),params)
+    }
 
     obtenerPkUsr::&db,id
     {
@@ -57,6 +94,7 @@ module ""
                     @"doctype": @cCotizacion
                 }
 
+                data<"solicitudes*"> : obtenerSolicitudes(db,@@(params,"$_entity_id"))
                 data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @doctype",args)
                 break
             }
@@ -66,6 +104,26 @@ module ""
                 break
             }
         }
+    }
+
+    sol.agregarCotizacion::&db,&params,&data
+    {
+        new solcot
+        {
+            @"sys_pk": @@(data,"#sys_pk")
+            @"sys_timestamp*": now()
+            @"sys_recver": @@(data,"#sys_recver")
+            @"cotizacion": @@(data,"#cotizacion")
+        }
+
+        ref entity = entity.update(db,params,solcot)
+        return entity
+    }
+
+    sol.removerCotizacion::&db,&params,&data
+    {
+        do dbr.execute(db,"UPDATE solcot SET cotizacion = NULL WHERE sys_pk = @_entity_id",params)
+        return entity.read(db,params)
     }
 
     cmp.read::&db,&params
@@ -100,9 +158,9 @@ module ""
             @"folio": @@(infoFolio,"#sys_pk")
             @"proveedor": @@(data,"#iproveedor")
             @"fenvio*": @null
-            @"redaccion": @@(data,"$redaccion")
-            @"notas": @@(data,"notas")
-            @"req": @@(data,"#ref_req")
+            @"redaccion": trim(@@(data,"$redaccion"))
+            @"notas": trim(@@(data,"$notas"))
+            @"req": @@(data,"#req")
             @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
@@ -132,7 +190,42 @@ module ""
 
     sol.update::&db,&params,&data
     {
-        // code...
+        @use_transaction = @false
+
+        do dbr.begin(db)
+
+        new solcot
+        {
+            @"sys_pk": @@(data,"#sys_pk")
+            @"sys_timestamp*": now()
+            @"sys_recver": @@(data,"#sys_recver")
+            @"fenvio*": @null
+            @"redaccion": trim(@@(data,"$redaccion"))
+            @"notas": trim(@@(data,"$notas"))
+        }
+
+        if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }
+
+        ref entity = entity.update(db,params,solcot)
+        do dbr.commit(db)
+
+        return entity
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            do record.clear(data)
+            data<"form*"> : FormData
+
+            do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
     }
 
     sol.delete::&db,&params

@@ -1,27 +1,39 @@
 var solcot =
 {
-    url_exit:"", url_get_fultimo:"", url_solcot:"",
+    url_exit:"", url_get_fultimo:"", url_solcot:"", url_change_status:"", url_add_cotizacion:"", url_del_cotizacion:"",
     formId:"", form:null,
     tableId:"", table:null,
 
     init()
     {
         const btn_get_folio = document.getElementById("btn_get_folio");
+        const btn_add_cot = document.getElementById("btn-add-cot");
+        const btn_del_cot = document.getElementById("btn-del-cot");
         const btn_add_solcot = document.getElementById("btn-add-solcot");
         const btn_edt_solcot = document.getElementById("btn-edt-solcot");
         const btn_del_solcot = document.getElementById("btn-del-solcot");
         const btn_submit = document.getElementById("btn_submit");
         const btn_reset = document.getElementById("btn_reset")
+        const mdl_solcot = document.getElementById("mdl_solcot");
+        const ik_cotizacion = document.getElementById("ik_cotizacion");
         this.form = document.getElementById(this.formId);
         this.table = document.getElementById(this.tableId);
 
         btn_get_folio.addEventListener("click", () => this.getFUltimo());
+        btn_add_cot.addEventListener("click", () => this.prepareIkCotizacion());
+        btn_del_cot.addEventListener("click", () => this.removerCotizacion());
+        btn_add_solcot.addEventListener("click", () => {
+            disableControls(["sel_serie","txt_folio","btn_get_folio","ik_proveedor"],false);
+            this.showModal("mdl_solcot");
+        });
         btn_edt_solcot.addEventListener("click", () => this.editarSolicitud());
         btn_del_solcot.addEventListener("click", () => this.removerSolicitud());
         btn_submit.addEventListener("click", () => this.save());
-        btn_reset.addEventListener("click", () => this.form.reset());
+        mdl_solcot.addEventListener("hide.bs.modal", () => this.form.reset());
+        ik_cotizacion.addEventListener("change", (data) => this.agregarCotizacion(data));
 
         this.setKeyboardShortcuts();
+        this.setEventBtnStatus();
     },
 
     setKeyboardShortcuts()
@@ -39,6 +51,32 @@ var solcot =
                 window.location.reload();
             }
         });
+    },
+
+    setEventBtnStatus()
+    {
+        const buttons = document.querySelectorAll(".btn-status");
+        buttons.forEach(btn => {
+            let status = Number(btn.getAttribute("data-status"));
+            btn.addEventListener("click", () => { this.changeStatus(status) });
+        });
+    },
+
+    prepareIkCotizacion()
+    {
+        if (!this.table) return;
+
+        let curr_row = this.table.CurrentRowIndex();
+        let array = this.table?.DataArray ?? [];
+        let curr_obj = array[curr_row] ?? {};
+
+        if (curr_row < 0) return;
+        if (Object.entries(curr_obj).length < this.table.Columns.length) return;
+
+        const ik_cotizacion = document.getElementById("ik_cotizacion");
+        ik_cotizacion.setAttribute("data-source", ik_cotizacion.getAttribute("data-source")+"&iproveedor="+curr_obj.iproveedor);
+
+        ik_cotizacion.searchText("",false);
     },
 
     getFUltimo()
@@ -84,7 +122,6 @@ var solcot =
             const ik_proveedor = document.getElementById("ik_proveedor");
 
             this.agregarSolicitud(data);
-            
             this.form.reset();
             ik_proveedor.clear();
             this.closeModal("mdl_solcot");
@@ -93,6 +130,96 @@ var solcot =
         const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
 
         InduxsoftCrudlModel.InvokeService(endpoint,fd,onSuccess,onFailure,method,false,true,"",true);
+    },
+
+    agregarCotizacion(doc)
+    {
+        if (!doc) return;
+        if (!this.url_add_cotizacion) return;
+
+        let curr_row = this.table.CurrentRowIndex();
+        let curr_obj = this.table.DataArray[curr_row];
+
+        let fd = new FormData();
+        fd.append("sys_pk",curr_obj.sys_pk);
+        fd.append("sys_recver",curr_obj.sys_recver);
+        fd.append("cotizacion",doc.sys_pk);
+        let endpoint = this.url_add_cotizacion.replace("{isol}",curr_obj.sys_pk);
+
+        const onSuccess = (data) =>
+        {
+            if (data.message) {
+                alert(data.message);
+                return;
+            }
+
+            curr_obj["sys_recver"] = data.sys_recver;
+            curr_obj["icotizacion"] = data.icotizacion;
+            curr_obj["cotizacion"] = data.cotizacion;
+            curr_obj["fcotizacion"] = data.fcotizacion;
+            
+            this.table.UpdateRow(curr_row);
+        }
+        const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
+
+        InduxsoftCrudlModel.InvokeService(endpoint,fd,onSuccess,onFailure,"PATCH",false,true,"",true);
+    },
+
+    removerCotizacion()
+    {
+        if (!this.table) return;
+        if (!this.url_del_cotizacion) return;
+
+        let curr_row = this.table.CurrentRowIndex();
+        let array = this.table?.DataArray ?? [];
+        let curr_obj = array[curr_row] ?? {};
+
+        if (curr_row < 0) return;
+        if (Object.entries(curr_obj).length < this.table.Columns.length) return;
+        if (!confirm("¿Desea remover la cotización de la solicitud seleccionada?")) return;
+
+        let endpoint = this.url_del_cotizacion.replace("{isol}",curr_obj.sys_pk);
+
+        const onSuccess = (data) =>
+        {
+            if (data.message) {
+                alert(data.message);
+                return;
+            }
+
+            curr_obj["sys_recver"] = data.sys_recver;
+            curr_obj["icotizacion"] = 0;
+            curr_obj["cotizacion"] = "";
+            curr_obj["fcotizacion"] = "";
+            
+            this.table.UpdateRow(curr_row);
+        }
+        const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
+
+        InduxsoftCrudlModel.InvokeService(endpoint,null,onSuccess,onFailure,"PATCH",false,true,"",true);
+    },
+
+    changeStatus(status)
+    {
+        if (!this.url_change_status) return;
+
+        const cmpreqForm = document.getElementById("form-cmpreq");
+        let fd = new FormData(cmpreqForm);
+        let endpoint = this.url_change_status.replace("{ireq}",fd.get("sys_pk"));
+        fd.append("status",status);
+
+        const onSuccess = (data) =>
+        {
+            if (data.message) {
+                alert(data.message);
+                return;
+            }
+
+            window.location.reload();
+        }
+        const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
+
+        InduxsoftCrudlModel.InvokeService(endpoint,fd,onSuccess,onFailure,"PATCH",false,true,"",true);
     },
 
     cleanDataArray(edt) {
@@ -106,13 +233,22 @@ var solcot =
         if (!data) return;
         if (!table) return;
 
-        let _solicitudes = this.cleanDataArray(table);
-        let available_row =(_solicitudes.length > 0) ? _solicitudes.length : 0;
+        if (Number(data.sys_recver) === 0)
+        {
+            let _solicitudes = this.cleanDataArray(table);
+            let available_row = (_solicitudes.length > 0) ? _solicitudes.length : 0;
 
-        if (table.DataArray.length === _solicitudes.length) table.AddRow();
+            if (table.DataArray.length === _solicitudes.length) table.AddRow();
 
-        table.DataArray[available_row] = data;
-        table.UpdateRow(available_row);
+            table.DataArray[available_row] = data;
+            table.UpdateRow(available_row);
+        }
+        else
+        {
+            let curr_row = table.CurrentRowIndex();
+            table.DataArray[curr_row] = data;
+            table.UpdateRow(curr_row);
+        }
     },
 
     editarSolicitud()
@@ -128,6 +264,7 @@ var solcot =
         if (Object.entries(curr_obj).length < table.Columns.length) return;
 
         this.fillFormData(curr_obj);
+        disableControls(["sel_serie","txt_folio","btn_get_folio","ik_proveedor"]);
         this.showModal("mdl_solcot");
     },
 
@@ -155,6 +292,19 @@ var solcot =
             if (el.name === "") continue;
 
             el.value = data[el.name];
+        }
+    },
+
+    emptyFormData()
+    {
+        if (!this.form) return;
+
+        let elements = this.form.elements;
+        for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            if (el.name === "") continue;
+
+            el.value = "";
         }
     },
 

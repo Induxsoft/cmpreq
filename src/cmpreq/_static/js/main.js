@@ -54,14 +54,20 @@ function url_decode(url)
 function disableControls(elementsId=[], value=true)
 {
     elementsId.forEach(id => {
-        document.getElementById(id).disabled = value;
+        const el = document.getElementById(id);
+        
+        if ("disabled" in el) el.disabled = value;
+        else el.setAttribute("disabled",value);
     });
 }
 
 function hideControls(elementsId=[], value=true)
 {
     elementsId.forEach(id => {
-        document.getElementById(id).hidden = value;
+        const el = document.getElementById(id);
+
+        if ("hidden" in el) el.hidden = value;
+        else el.setAttribute("disabled",value);
     });
 }
 

@@ -11,6 +11,7 @@ module "Controller configs"
 	#include "dbr.folios.dkl"
 	#include "_lib/config.dk"
 	#include "_lib/lib.dk"
+	#include "_lib/list.queries.dk"
 
 	@base_path = "cmpreq"
 	@path_root = ""

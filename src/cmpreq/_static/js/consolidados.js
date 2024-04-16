@@ -157,7 +157,7 @@ var consolidados =
                     return;
                 }
 
-                if (data.status === 20 && this.url_solcot) window.location.href = this.url_solcot;
+                if (data.status === 20 && this.url_solcot) window.location.href = this.url_solcot + data.sys_pk + "/cmp-in-process/";
                 else window.location.reload();
             }
             const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }

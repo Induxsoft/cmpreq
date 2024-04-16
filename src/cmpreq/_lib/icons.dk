@@ -237,6 +237,20 @@ module "icons.dk"
         </svg>
     '}
 
+    text @ICON_IMP_DOC
+    {$'
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+            <path d="m14.707,0H4.5c-1.379,0-2.5,1.122-2.5,2.5v10.5h1V2.5c0-.827.673-1.5,1.5-1.5h9.5v7h7v15H3v-5h-1v6h20V7.293L14.707,0Zm.293,1.707l5.293,5.293h-5.293V1.707Zm-4.133,14.293H0v-1h10.867c-.04-.067-.089-.129-.146-.187l-3.202-3.203.707-.707,3.202,3.203c.769.769.769,2.019,0,2.787l-3.202,3.203-.707-.707,3.202-3.203c.057-.057.106-.12.146-.187Z"/>
+        </svg>
+    '}
+
+    text @ICON_EXP_DOC
+    {$'
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M23.57,17.55l-3.3,3.3-.71-.71,3.14-3.14H13v-1h9.7l-3.14-3.14,.71-.71,3.3,3.3c.58,.58,.58,1.52,0,2.11ZM1,23H20v1H0V2.5C0,1.12,1.12,0,2.5,0H12.71l7.29,7.29v2.71h-1v-2h-7V1H2.5c-.83,0-1.5,.67-1.5,1.5V23ZM13,7h5.29L13,1.71V7Z"/>
+        </svg>
+    '}
+
     text @ICON_FILE_CHECK
     {$'
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-check" viewBox="0 0 16 16">

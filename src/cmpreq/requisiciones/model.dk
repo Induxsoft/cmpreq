@@ -10,61 +10,8 @@ module ""
     @create_exclude_fields = "sys_lastuser"
     @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
 
-    @list_query = "
-    SELECT
-        req.sys_pk,
-        req.sys_guid,
-        req.referencia,
-        DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
-        IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
-        CONCAT('$',FORMAT(req.subtotal,4)) AS subtotal,
-        CONCAT('$',FORMAT(req.impuestos,4)) AS impuestos,
-        CONCAT('$',FORMAT((req.subtotal + req.impuestos),4)) AS total,
-        IF(req.consolidacion,'C','D') AS tipo,
-        IFNULL(con.referencia,'') AS consolidadoen,
-        IFNULL(pda.partida,'') AS partida,
-        stt.const AS `status`,
-        dvs.codigo AS `divisa`
-    FROM #<@table_name> AS req
-        LEFT JOIN #<@table_name> AS con ON con.sys_pk = req.en
-        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
-        INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
-        INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
-    WHERE NOT IFNULL(req.sys_deleted,0)
-    #<conditions>
-    LIMIT #<@default_max_rows>
-    "
-
-    @read_query = "
-    SELECT
-        req.sys_pk,
-        req.sys_guid,
-        req.sys_recver,
-        req.referencia,
-        DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
-        IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
-        req.subtotal,
-        req.impuestos,
-        (req.subtotal + req.impuestos) AS importe,
-        req.periodo,
-        req.tcambio,
-        req.`status`,
-        IFNULL(req.notas,'') AS notas,
-        IF(req.consolidacion,'C','D') AS tipo,
-        IFNULL(pda.partida,'') AS partida_pre,
-        IFNULL(pto.ejercicio,'') AS ejercicio,
-        IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
-        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
-        stt.const AS cstatus,
-        dvs.codigo AS cdivisa
-    FROM #<@table_name> AS req
-        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
-        LEFT JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
-        LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
-        INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
-        INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
-    WHERE req.#<@keyfield> = @_entity_id
-    "
+    @list_query = @qry_list_cmpreq
+    @read_query = @qry_cmpreq
 
     @childs_query = "
     SELECT
@@ -351,6 +298,7 @@ module ""
             }
         }
         // filter-date-range [end]
+        conditions = conditions + " LIMIT #<@default_max_rows>"
 
         conditions = ftext(conditions)
         @list_query = ftext(@list_query)

@@ -81,11 +81,11 @@ module "list.dk"
             member @"tipo" { @"caption":"Tipo" }
 			member @"fecha" { @"caption": "Elaboración" }
             member @"flimite" { @"caption": "Vencimiento" }
-            member @"divisa" { @"caption": "Divisa" }
+            member @"cdivisa" { @"caption": "Divisa" }
             member @"subtotal" { @"caption": "Subtotal" }
             member @"impuestos" { @"caption": "Impuestos" }
             member @"total" { @"caption": "Total" }
-            member @"status" { @"caption": "Estado" }
+            member @"cstatus" { @"caption": "Estado" }
 
             member @"_actions" 
             {

@@ -13,7 +13,10 @@ module "form.dk"
 
     ref entity = ifnull(@("&./entity"),record.create())
     ref detail = ifnull(@("&./detail"),list.create())
-    ref list_series =ifnull(@("&./list_series"),list.create())
+    ref _requisiciones = list.create()
+    ref _productos = list.create()
+    ref _solicitudes = ifnull(@("&./solicitudes"),list.create())
+    ref list_series = ifnull(@("&./list_series"),list.create())
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
@@ -24,32 +27,26 @@ module "form.dk"
     @show_btn_aprobar = (@curr_status == @stt_xaprobar)
     @show_btn_nproceso = (@curr_status == @stt_aprobado)
     @show_btn_cancelar = containsword(@curr_status, "0,1,10,20")
-    @enable_editing = (@curr_status == @stt_borrador || @curr_status == @stt_xaprobar)
+    @enable_editing = (@curr_status == @stt_nproceso)
 
-    empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
-    _requisiciones = empty_rows
-    _productos = empty_rows
-
-    if @("$error/message") != "" {
-        _detalle = @("$./form/_detalle")
-        if _detalle != "" { ref detail = from.json(_detalle) }
-    }
-    
-    if list.count(detail) <= 0 { ref detail = from.json(empty_rows) }
-    else
+    function fixEdtData(&list,length)
     {
-        er = list.count(from.json(empty_rows)) - list.count(detail)
-        repeat er
+        add = (length - list.count(list))
+        repeat add
         {
-            do list.add(detail,record.create())
+            do list.add(list,record.create())
         }
     }
 
     switch @tipo
     {
-        case "C" { _requisiciones = to.json(detail) }
-        case "D" { _productos = to.json(detail) }
+        case "C" { ref _requisiciones = detail }
+        case "D" { ref _productos = detail }
     }
+
+    do fixEdtData(_requisiciones,10)
+    do fixEdtData(_productos,10)
+    do fixEdtData(_solicitudes,10)
 
     new sel_serie
     {
@@ -98,58 +95,64 @@ module "form.dk"
         #! do uie.printV12FormBar(nav_config)
 
         #$
-        div(id="work_area" class="container-section")
+        div(id="work_area" class="container-section #<ifstr(@enable_editing,'','disabled-all')>")
         {
-            div(class="row #<ifstr(@tipo=='D','','d-none')>")
+            form(method="POST" action="./" id="form-cmpreq")
             {
-                div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"Unidad Organizacional:"}
-                    p(class="my-0"){$"#<@@(entity,'$unidad_org')>"}
-                }
-                div(class="col-lg-2 col-md-2 col-sm-12 d-lg-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"Ejercicio:"}
-                    p(class="my-0"){$"#<@@(entity,'$ejercicio')>"}
-                }
-                div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"Partida Presupuestal:"}
-                    p(class="my-0"){$"#<@@(entity,'$partida_pre')>"}
-                }
-            }
+                input(type="hidden" name="sys_pk" value="#<@@(entity,'#sys_pk')>")
+                input(type="hidden" name="sys_recver" value="#<@@(entity, '#sys_recver')>")
 
-            div(class="d-flex justify-content-between flex-wrap gap-2")
-            {
-                div(class="d-flex align-items-center gap-1 #<ifstr(@tipo=='D','','d-none')>")
+                div(class="row #<ifstr(@tipo=='D','','d-none')>")
                 {
-                    h6(class="my-0"){$"Periodo:"}
-                    p(class="my-0"){$"#<@@(entity,'$periodo')>"}
+                    div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"Unidad Organizacional:"}
+                        p(class="my-0"){$"#<@@(entity,'$unidad_org')>"}
+                    }
+                    div(class="col-lg-2 col-md-2 col-sm-12 d-lg-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"Ejercicio:"}
+                        p(class="my-0"){$"#<@@(entity,'$ejercicio')>"}
+                    }
+                    div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"Partida Presupuestal:"}
+                        p(class="my-0"){$"#<@@(entity,'$partida_pre')>"}
+                    }
                 }
-                div(class="d-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"Elaboración:"}
-                    p(class="my-0"){$"#<@@(entity,'$fecha')>"}
-                }
-                div(class="d-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"Vencimiento:"}
-                    p(class="my-0"){$"#<@@(entity,'$flimite')>"}
-                }
-                div(class="d-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"Divisa:"}
-                    p(class="my-0" "data-codigo"="#<@@(entity,'$cdivisa')>" id="txt_divisa"){$"#<@@(entity,'$ddivisa')>"}
-                }
-                div(class="d-flex align-items-center gap-1")
-                {
-                    h6(class="my-0"){$"T.Cambio:"}
-                    p(class="my-0"){$"#<@@(entity,'$tcambio')>"}
-                }
-            }
 
-            h6(class=""){$"Notas:"}
-            textarea(class="form-control rounded-0" name="" id="txt_notas" maxlength="32000" readonly=""){$"#<@@(entity,'$notas')>"}
+                div(class="d-flex justify-content-between flex-wrap gap-2")
+                {
+                    div(class="d-flex align-items-center gap-1 #<ifstr(@tipo=='D','','d-none')>")
+                    {
+                        h6(class="my-0"){$"Periodo:"}
+                        p(class="my-0"){$"#<@@(entity,'$periodo')>"}
+                    }
+                    div(class="d-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"Elaboración:"}
+                        p(class="my-0"){$"#<@@(entity,'$fecha')>"}
+                    }
+                    div(class="d-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"Vencimiento:"}
+                        p(class="my-0"){$"#<@@(entity,'$flimite')>"}
+                    }
+                    div(class="d-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"Divisa:"}
+                        p(class="my-0" "data-codigo"="#<@@(entity,'$cdivisa')>" id="txt_divisa"){$"#<@@(entity,'$ddivisa')>"}
+                    }
+                    div(class="d-flex align-items-center gap-1")
+                    {
+                        h6(class="my-0"){$"T.Cambio:"}
+                        p(class="my-0"){$"#<@@(entity,'$tcambio')>"}
+                    }
+                }
+
+                h6(class=""){$"Notas:"}
+                textarea(class="form-control rounded-0" name="" id="txt_notas" maxlength="32000" readonly=""){$"#<@@(entity,'$notas')>"}
+            }
 
             nav(class="mt-2")
             {
@@ -166,7 +169,7 @@ module "form.dk"
                 {
                     div(class="" id="div_tbl_requisiciones" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
-                        "edit-table"(id="tbl_requisiciones" data="#<_requisiciones>" "auto-confirm"="true" style="width:100%;"
+                        "edit-table"(id="tbl_requisiciones" data="#<to.json(_requisiciones)>" "auto-confirm"="true" style="width:100%;"
                         "row-height"="1.2rem"
                         "control-styles"="
                             tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
@@ -201,7 +204,7 @@ module "form.dk"
                 {
                     div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
-                        "edit-table"(id="tbl_productos" data="#<_productos>" "auto-confirm"="true" style="width:100%;"
+                        "edit-table"(id="tbl_productos" data="#<to.json(_productos)>" "auto-confirm"="true" style="width:100%;"
                         "row-height"="1.2rem"
                         "control-styles"="
                             tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
@@ -235,15 +238,18 @@ module "form.dk"
                     {
                         small(class="flex-grow-1 text-muted"){$""}
 
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-cot" title="Agregar cotización"){$"#<@ICON_IMP_DOC> Agregar cotización"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-del-cot" title="Remover cotización"){$"#<@ICON_EXP_DOC> Remover cotización"}
+
                         small(class="text-muted"){$"|"}
 
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" "data-bs-toggle"="modal" "data-bs-target"="#mdl_solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar"}
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar"}
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-del-solcot" title="Remover solicitud de cotización"){$"#<@ICON_FILE_DASH> Remover"}
                     }
                     div(class="" id="div_tbl_solicitudes" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
-                        "edit-table"(id="tbl_solicitudes" data="#<empty_rows>" "auto-confirm"="true" style="width:100%;"
+                        "edit-table"(id="tbl_solicitudes" data="#<to.json(_solicitudes)>" "auto-confirm"="true" style="width:100%;"
                         "row-height"="1.2rem"
                         "control-styles"="
                             tr th{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
@@ -294,7 +300,7 @@ module "form.dk"
                     {
                         input(type="hidden" name="sys_pk" value="0")
                         input(type="hidden" name="sys_recver" value="0")
-                        input(type="hidden" name="ref_req" value="#<@@(entity,'#sys_pk')>")
+                        input(type="hidden" name="req" value="#<@@(entity,'#sys_pk')>")
 
                         div(class="col-lg-6 col-md-6 col-sm-6")
                         {
@@ -352,6 +358,11 @@ module "form.dk"
             }
         }
 
+        div
+        {
+            "input-key"(id="ik_cotizacion" "data-key"="sys_pk" "data-search"="referencia" "data-text"="fecha" "data-source"="#<@URL_BUSCAR_COTIZACION>" columns="referencia,fecha,vencimiento" colcaptions="Referencia,Fecha,Vencimiento" "box-title-text"="Seleccione una cotización" "control-styles"="#container{display:none !important;}"){$""}
+        }
+
         #$
         script(src="#<@JS_MAIN>"){$""}
         script(src="#<@JS_REQUISICIONES>"){$""}
@@ -382,6 +393,9 @@ module "form.dk"
 
                 solcot.url_exit = "#<@CMP_REQUISICION>";
                 solcot.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
+                solcot.url_change_status = "#<@URL_CHANGE_STATUS>";
+                solcot.url_add_cotizacion = "#<@URL_ADD_COTIZACION>";
+                solcot.url_del_cotizacion = "#<@URL_DEL_COTIZACION>";
                 solcot.url_solcot = "#<@CMP_SOLCOT>";
                 solcot.formId = "form-solcot";
                 solcot.tableId = "tbl_solicitudes";
