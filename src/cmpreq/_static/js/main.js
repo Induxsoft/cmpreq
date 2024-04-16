@@ -14,8 +14,8 @@ function trigger(elementOrSelector,eventName)
 
 function path_concat(p1,p2,...px)
 {
-    p1 = p1.replaceAll("\\","/");
-    p2 = p2.replaceAll("\\","/");
+    p1 = p1.toString().replaceAll("\\","/");
+    p2 = p2.toString().replaceAll("\\","/");
 
     let l1 = p1.split("/");
     let l2 = p2.split("/");
@@ -23,12 +23,12 @@ function path_concat(p1,p2,...px)
     let path = [...l1, ...l2];
 
     for (let i = 0; i < px.length; i++) {
-        const p = px[i].replaceAll("\\","/");
+        const p = px[i].toString().replaceAll("\\","/");
         let l = p.split("/");
-        path.concat(l);
+        path = path.concat(l);
     }
 
-    return path.join("/");
+    return path.join("/").replace(/\/+/g, '/');
 }
 
 function url_encode(url)

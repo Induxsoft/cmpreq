@@ -1,0 +1,148 @@
+#include "dkli.dkh"
+#!
+module "form.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+	#include "../_lib/icons.dk"
+    #include "../_lib/lib.dk"
+
+    do @context.begin(@crud_context)
+
+    ref entity = ifnull(@("&./entity"),record.create())
+    ref productos = ifnull(@("&./productos"),list.create())
+    ref cotizaciones = ifnull(@("&./cotizaciones"),list.create())
+
+	@_entities_type = @("$parameters/_entities_type")
+	@_entity_id = @("$parameters/_entity_id")
+
+    function searchProducto(&list,iproducto)
+    {
+        for i = 0; i < list.count(list)
+        {
+            ref obj = list.obj(list,i)
+            if @@(obj,"#iproducto") == iproducto { return obj }
+        }
+        return record.create()
+    }
+
+    header_act::
+    {
+        btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
+
+        #$
+        button(class="#<btn_cls>" type="submit" id="btn_submit"){$"#<@ICON_SAVE>"}
+        #!
+    }
+
+    point general_act to header_act
+
+    new nav_config
+    {
+        @"title": "Cuadro Comparativo"
+        @"buttons*": general_act
+        @"urlexit": replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
+        member @"hidden" { @"print": @true }
+    }
+
+    #$
+    div(class="container")
+    {
+        link(href="#<@CSS_MAIN>" rel="stylesheet")
+
+        div(id="work_area" class="container-section")
+        {
+            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
+
+            form(method="POST" action="./" id="form-cc")
+            {
+                #!
+                do uie.printV12FormBar(nav_config)
+                #$
+
+                div(class="" id="div_tbl_cc" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
+                {
+                    table(class="table table-sm table-striped")
+                    {
+                        thead
+                        {
+                            tr
+                            {
+                                th(class="text-center" colspan="6"){$"Referencia"}
+                                #!
+                                num_cots = list.count(cotizaciones)
+                                repeat num_cots
+                                {
+                                    #$ th(class="text-center" colspan="3"){$"Proveedor #"}
+                                }
+                                #$
+                            }
+                            tr
+                            {
+                                th{$""}
+                                th{$"Descripción"}
+                                th{$"Unidad"}
+                                th{$"Cantidad"}
+                                th{$"Precio"}
+                                th{$"Importe"}
+
+                                #!
+                                repeat num_cots
+                                {
+                                    #$
+                                    th(class="border-start"){$""}
+                                    th{$"P.U"}
+                                    th{$"Total"}
+                                }
+                                #$
+                            }
+                        }
+                        tbody
+                        {
+                            #!
+                            for i = 0; i < list.count(productos)
+                            {
+                                ref prod = list.obj(productos,i)
+                                iprod = @@(prod,"#iproducto")
+
+                                #$
+                                tr
+                                {
+                                    td{ input(class="form-check-input" type="radio" name="#<iprod>" value="0" checked="") }
+                                    td{$"#<@@(prod,'$descripcion')>"}
+                                    td{$"#<@@(prod,'$unidad')>"}
+                                    td{$"#<@@(prod,'$cantidad')>"}
+                                    td{$"#<@@(prod,'$precio')>"}
+                                    td{$"#<@@(prod,'$importe')>"}
+
+                                    #!
+                                    for j = 0; j < num_cots
+                                    {
+                                        ref pp = searchProducto(list.obj(cotizaciones,j),iprod)
+                                        #$
+                                        td(class="border-start"){ input(class="form-check-input" type="radio" name="#<iprod>" value="1") }
+                                        td{$"#<@@(pp,'$precio')>"}
+                                        td{$"#<@@(pp,'$importe')>"}
+                                    }
+                                    #$
+                                }
+                            }
+                            #$
+                        }
+                    }
+                }
+            }
+        }
+
+        #$
+        script(src="#<@JS_MAIN>"){$""}
+		script(type="text/javascript")
+		{$'
+            document.addEventListener("DOMContentLoaded", () => {
+                // code...
+            });
+		'}
+    }
+}

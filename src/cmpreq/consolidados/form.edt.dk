@@ -30,14 +30,14 @@ module "form.dk"
     if @curr_status == @stt_nproceso {
         endpoint = path.concat(@CMP_SOLCOT,@_entity_id)
         endpoint = path.concat(endpoint,"cmp-in-process")
-        new context
+        /* new context
         {
             @"entity*": cmpcon
             @"detail*": dcmpcon
         }
         jsonContext = to.json(context)
         jsonContext = url_encode(jsonContext)
-        endpoint = path.concat(endpoint,ftext("?_context=#<jsonContext>"))
+        endpoint = path.concat(endpoint,ftext("?_context=#<jsonContext>")) */
 
         @http_context<"response/headers/location"> : endpoint
         return
@@ -178,9 +178,9 @@ module "form.dk"
                                     "edit-th"(type="NoEditable" field="flimite" textalign="center"){$"Vencimiento"}
                                     "edit-th"(type="NoEditable" field="cdivisa" textalign="center"){$"Divisa"}
                                     "edit-th"(type="NoEditable" field="tcambio" textalign="center"){$"T.Cambio"}
-                                    "edit-th"(type="NoEditable" field="subtotal" textalign="end" format="true" thousandssep="," decs="4"){$"Subtotal"}
-                                    "edit-th"(type="NoEditable" field="impuestos" textalign="end" format="true" thousandssep="," decs="4"){$"Impuestos"}
-                                    "edit-th"(type="NoEditable" field="importe" textalign="end" format="true" thousandssep="," decs="4"){$"Importe"}
+                                    "edit-th"(type="NoEditable" field="subtotal" textalign="end" format="true" thousandssep="true" decs="4"){$"Subtotal"}
+                                    "edit-th"(type="NoEditable" field="impuestos" textalign="end" format="true" thousandssep="true" decs="4"){$"Impuestos"}
+                                    "edit-th"(type="NoEditable" field="importe" textalign="end" format="true" thousandssep="true" decs="4"){$"Importe"}
                                 }
                             }
                         }
@@ -207,11 +207,11 @@ module "form.dk"
                                     "edit-th"(type="NoEditable" field="codigo"){$"Código"}
                                     "edit-th"(type="NoEditable" field="descripcion"){$"Descripción"}
                                     "edit-th"(type="NoEditable" field="unidad" textalign="center"){$"Unidad"}
-                                    "edit-th"(type="NoEditable" field="precio" textalign="end" format="true" thousandssep="," decs="4"){$"Precio"}
+                                    "edit-th"(type="NoEditable" field="precio" textalign="end" format="true" thousandssep="true" decs="4"){$"Precio"}
                                     "edit-th"(type="NoEditable" field="cantidad" textalign="center"){$"Cantidad"}
-                                    "edit-th"(type="NoEditable" field="subtotal" textalign="end" format="true" thousandssep="," decs="4"){$"Subtotal"}
-                                    "edit-th"(type="NoEditable" field="impuestos" textalign="end" format="true" thousandssep="," decs="4"){$"Impuestos"}
-                                    "edit-th"(type="NoEditable" field="importe" textalign="end" format="true" thousandssep="," decs="4"){$"Importe"}
+                                    "edit-th"(type="NoEditable" field="subtotal" textalign="end" format="true" thousandssep="true" decs="4"){$"Subtotal"}
+                                    "edit-th"(type="NoEditable" field="impuestos" textalign="end" format="true" thousandssep="true" decs="4"){$"Impuestos"}
+                                    "edit-th"(type="NoEditable" field="importe" textalign="end" format="true" thousandssep="true" decs="4"){$"Importe"}
                                     "edit-th"(type="NoEditable" field="notas"){$"Notas"}
                                 }
                             }

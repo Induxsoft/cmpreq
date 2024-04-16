@@ -7,108 +7,59 @@ module ""
 
     @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
     @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
+    
     @create_exclude_fields = "sys_lastuser"
     @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
+    
+    @create_alias_fields = ""
+    @update_alias_fields = ""
 
     @list_query = @qry_list_cmpreq
     @read_query = @qry_cmpreq
 
-    @childs_query = "
-    SELECT
-        p.codigo,
-        p.descripcion,
-    -- Campos visibles en el editable
-        p.codigo AS edt_codigo,
-        p.descripcion AS edt_descripcion,
-        d.unidad AS edt_unidad,
-        d.precio AS edt_precio,
-        d.cantidad AS edt_cantidad,
-        (d.precio * d.cantidad) AS edt_subtotal,
-        0 AS edt_descuentos,
-        d.impuestos AS edt_impuestos,
-        ((d.cantidad * d.precio) + d.impuestos) AS edt_importe,
-        d.notas AS edt_notas,
-    -- Campos para el insert
-        d.producto,
-        d.cantidad,
-        d.unidad,
-        d.precio,
-        d.impuestos,
-        IFNULL(d.excluido,0) AS excluido,
-        IFNULL(d.notas,'') AS notas,
-    -- Campos extras para operaciones
-        (d.precio * d.cantidad) AS subtotal,
-        0 AS descuentos,
-        ((d.cantidad * d.precio) + d.impuestos) AS importe,
-        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i1_tasa,
-        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i2_tasa,
-        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i3compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i3_tasa,
-        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i4compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i4_tasa,
-        TRIM(p.unidad) AS unidada,
-        TRIM(IFNULL(p.unidadb,'')) AS unidadb,
-        TRIM(IFNULL(p.unidadc,'')) AS unidadc,
-        TRIM(IFNULL(p.unidadd,'')) AS unidadd,
-        TRIM(IFNULL(p.unidade,'')) AS unidade,
-        IFNULL(p.factorb,0) AS factorb,
-        IFNULL(p.factorc,0) AS factorc,
-        IFNULL(p.factord,0) AS factord,
-        IFNULL(p.factore,0) AS factore
-    FROM dcmpreq AS d
-        INNER JOIN producto AS p ON p.sys_pk = d.producto
-        INNER JOIN cfgimpuesto AS i ON i.sys_pk = p.impuestos
-    WHERE d.ref_req = @_entity_id
-    "
-
     buscarUnidad::&db,&params
     {
-        sql = "
-        SELECT
-            sys_pk,
-            sys_guid,
-            codigo,
-            descripcion
-        FROM rh_unidad_org
-        WHERE #<condition>
-        "
         if trim(@@(params,"$id")) != ""
         {
-            condition = "(sys_pk = @id OR sys_guid = @id)"
-            return dbr.rec(db,ftext(sql),params)
+            conditions = "AND (sys_pk = @id OR sys_guid = @id)"
+            return dbr.rec(db,ftext(@qry_buscar_unidad),params)
         }
         if trim(@@(params,"$search")) != ""
         {
-            condition = "(codigo LIKE CONCAT('%',@search,'%') OR descripcion LIKE CONCAT('%',@search,'%'))"
-            return dbr.list(db,ftext(sql),params)
+            conditions = "
+                AND NOT IFNULL(sys_deleted,0)
+                AND (codigo LIKE CONCAT('%',@search,'%') OR descripcion LIKE CONCAT('%',@search,'%'))
+            "
+            return dbr.list(db,ftext(@qry_buscar_unidad),params)
         }
+
         return list.create()
     }
 
     buscarPartida::&db,&params
     {
-        sql = "
-        SELECT
-            pda.sys_pk,
-            pda.sys_guid,
-            pda.id,
-            pda.partida
-        FROM gop_partida AS pda
-            INNER JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
-            INNER JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
-        WHERE #<condition>
-        "
         if trim(@@(params,"$id")) != ""
         {
-            condition = "(pda.sys_pk = @id OR pda.sys_guid = @id)"
-            return dbr.rec(db,ftext(sql),params)
+            conditions = "AND (pda.sys_pk = @id OR pda.sys_guid = @id)"
+            return dbr.rec(db,ftext(@qry_buscar_partida),params)
         }
         if trim(@@(params,"$search")) != ""
         {
-            condition = "(pda.id LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))"
-            condition = condition + " AND pto.ejercicio = @ejercicio AND uni.sys_pk = @iunidad"
-            condition = condition + " AND (select count(sys_pk) from gop_partida where padre = pda.sys_pk) = 0"
-            
-            return dbr.list(db,ftext(sql),params)
+            joins = "
+                INNER JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
+                INNER JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
+            "
+
+            conditions = "
+                AND NOT IFNULL(pda.sys_deleted,0)
+                AND pto.ejercicio = @ejercicio
+                AND uni.sys_pk = @iunidad
+                AND (select count(sys_pk) from gop_partida where padre = pda.sys_pk) = 0
+                AND (pda.id LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
+            "
+            return dbr.list(db,ftext(@qry_buscar_partida),params)
         }
+
         return list.create()
     }
 
@@ -116,43 +67,12 @@ module ""
     {
         do setZonaImpuesto(db,params)
         
-        sql = "
-        SELECT
-            p.sys_pk,
-            p.sys_guid,
-            p.codigo,
-            p.descripcion,
-            TRIM(p.unidad) AS unidada,
-            TRIM(IFNULL(p.unidadb,'')) AS unidadb,
-            TRIM(IFNULL(p.unidadc,'')) AS unidadc,
-            TRIM(IFNULL(p.unidadd,'')) AS unidadd,
-            TRIM(IFNULL(p.unidade,'')) AS unidade,
-            IFNULL(p.factorb,0) AS factorb,
-            IFNULL(p.factorc,0) AS factorc,
-            IFNULL(p.factord,0) AS factord,
-            IFNULL(p.factore,0) AS factore,
-            p.costoultimo AS precio,
-            1 AS cantidad,
-            0 AS descuentos,
-            IFNULL(p.existencia,0) AS existencia,
-            dvs.codigo AS `divisa`,
-            dvs.tcambio AS tipocambio,
-            imp.nombre AS conf_impuestos,
-            IFNULL(imp.uf_tipoi1,'') AS i1_txt,
-            (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i1_tasa,
-            IFNULL(imp.uf_tipoi2,'') AS i2_txt,
-            (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i2_tasa,
-            IFNULL(imp.uf_tipoi3,'') AS i3_txt,
-            (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i3compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i3_tasa,
-            IFNULL(imp.uf_tipoi4,'') AS i4_txt,
-            (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i4compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i4_tasa
-        FROM producto AS p
-            INNER JOIN divisa AS dvs ON dvs.sys_pk = p.idivisa
-            INNER JOIN cfgimpuesto AS imp ON imp.sys_pk = p.impuestos
-        WHERE (p.codigo LIKE CONCAT('%',@search,'%') OR p.descripcion LIKE CONCAT('%',@search,'%'))
+        conditions = "
+            AND NOT IFNULL(p.sys_deleted,0)
+            AND (p.codigo LIKE CONCAT('%',@search,'%') OR p.descripcion LIKE CONCAT('%',@search,'%'))
         "
         
-        return dbr.list(db,sql,params)
+        return dbr.list(db,ftext(@qry_buscar_producto),params)
     }
 
     obtenerFultimo::&db,&params
@@ -174,12 +94,6 @@ module ""
     {
         new params { @"id": id }
         return buscarPartida(db,params)
-    }
-
-    obtenerPkUsr::&db,id
-    {
-        new params { @"id": id }
-        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
     }
 
     setZonaImpuesto::&db,&params
@@ -209,22 +123,22 @@ module ""
             ref fd = ifnull(@@(data,"&form"),record.create())
             new args
             {
-                @"cRequisicion": @cRequisicion
+                @"doctype": @cRequisicion
             }
 
             if @@(fd,"#unidad_org") > 0 { data<"dt_unidad_org*"> : obtenerUnidad(db,@@(fd,"#unidad_org")) }
             if @@(fd,"#partida") > 0 { data<"dt_partida_pre*"> : obtenerPartida(db,@@(fd,"#partida")) }
 
-            data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @cRequisicion",args)
+            data<"list_series*"> : dbr.list(db, @qry_list_series, args)
             data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
-            data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
+            data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
         }
         else
         {
             do setZonaImpuesto(db,params)
 
             if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
-            data<"dcmpreq*"> : dbr.list(db,@childs_query,params)
+            data<"dcmpreq*"> : dbr.list(db,ftext(@qry_dcmpreq),params)
         }
     }
 
@@ -316,7 +230,7 @@ module ""
             @"status": @@(data,"#status")
         }
 
-        if @@(data,"#status") == @stt_aprobado { cmpreq<"uaprobo"> : obtenerPkUsr(db, @@(@http_context, "$session/user/uid")) }
+        if @@(data,"#status") == @stt_aprobado { cmpreq<"uaprobo"> : lib.getPkUsr(db, @@(@http_context, "$session/user/uid")) }
 
         ref entity = dbr.save(db,"cmpreq",cmpreq)
 
@@ -386,7 +300,7 @@ module ""
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucreo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
         if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }

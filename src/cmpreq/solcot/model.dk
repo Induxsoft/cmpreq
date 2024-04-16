@@ -18,35 +18,20 @@ module ""
 
     buscarProveedor::&db,&params
     {
-        sql = "
-        SELECT 
-            pdr.sys_pk,
-            pdr.codigo,
-            pdr.nombre,
-            tpp.descripcion AS tipo,
-            dvs.sys_pk AS idivisa,
-            dvs.codigo AS cdivisa,
-            dvs.tcambio,
-            pdr.tasaiva,
-            IF(pdr.tasaiva=2,-1,1) AS zimpuesto,
-            zi.const AS zona_impuesto
-        FROM proveedor AS pdr
-            INNER JOIN tipoproveedor AS tpp ON tpp.sys_pk = pdr.tipo
-            INNER JOIN divisa AS dvs ON dvs.sys_pk = pdr.idivisa
-            INNER JOIN ctasasiva AS zi ON zi.id = pdr.tasaiva
-        WHERE #<condition>
-        "
-
         if trim(@@(params,"$id")) != ""
         {
-            condition = "(pdr.sys_pk = @id OR pdr.sys_guid = @id OR pdr.codigo = @id)"
-            return dbr.rec(db,ftext(sql),params)
+            conditions = "AND (pdr.sys_pk = @id OR pdr.sys_guid = @id)"
+            return dbr.rec(db,ftext(@qry_buscar_proveedor),params)
         }
         if trim(@@(params,"$search")) != ""
         {
-            condition = "(pdr.codigo LIKE CONCAT('%',@search,'%') OR pdr.nombre LIKE CONCAT('%',@search,'%') OR pdr.rfc LIKE CONCAT('%',@search,'%'))"
-            return dbr.list(db,ftext(sql),params)
+            conditions = "
+                AND NOT IFNULL(pdr.sys_deleted,0)
+                AND (pdr.codigo LIKE CONCAT('%',@search,'%') OR pdr.nombre LIKE CONCAT('%',@search,'%') OR pdr.rfc LIKE CONCAT('%',@search,'%'))
+            "
+            return dbr.list(db,ftext(@qry_buscar_proveedor),params)
         }
+
         return list.create()
     }
 
@@ -59,7 +44,8 @@ module ""
             cmp.sys_pk,
             cmp.referencia,
             DATE_FORMAT(cmp.fecha,'%Y-%m-%d') AS fecha,
-            DATE_FORMAT(cmp.vencimiento,'%Y-%m-%d') AS vencimiento
+            DATE_FORMAT(cmp.vencimiento,'%Y-%m-%d') AS vencimiento,
+            IFNULL((((((cmp.subtotal - cmp.descuento1) - cmp.descuento2) + cmp.impuesto1) + cmp.impuesto2) + cmp.impuesto3) + cmp.impuesto4,0) AS total
         FROM compra AS cmp
         WHERE NOT IFNULL(cmp.sys_deleted,0)
             AND cmp.statusadministrativo = 2
@@ -73,14 +59,66 @@ module ""
     obtenerSolicitudes::&db,reqid
     {
         new params { @"reqid": reqid }
-        @read_query = @read_query + " OR (NOT IFNULL(sol.sys_deleted,0) AND sol.req = @reqid)"
+
+        conditions = "OR (NOT IFNULL(sol.sys_deleted,0) AND sol.req = @reqid)"
         return dbr.list(db,ftext(@read_query),params)
     }
 
-    obtenerPkUsr::&db,id
+    obtenerProductos::&db,idcon
     {
-        new params { @"id": id }
-        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
+        new params { @"idcon": idcon }
+
+        conditions = "OR (d.ref_req IN (SELECT sys_pk FROM cmpreq WHERE en = @idcon))"
+        @qry_obtener_productos = ftext(@qry_obtener_productos)
+
+        sql_consol_prods = "
+        SELECT
+            sys_pk AS iproducto,
+            descripcion,
+            unidad,
+            precio,
+            ROUND(SUM(cantidad),4) AS cantidad,
+            ROUND(SUM(importe),4) AS importe,
+            excluido
+        FROM (#<@qry_obtener_productos>) AS res
+        GROUP BY res.sys_pk
+        "
+        return dbr.list(db,ftext(sql_consol_prods),params)
+    }
+
+    obtenerCotizaciones::&db,&params
+    {
+        sql_cotizaciones = "SELECT cotizacion FROM solcot WHERE NOT IFNULL(sys_deleted,0) AND cotizacion IS NOT NULL AND req = @_entity_id ORDER BY sys_pk"
+        ref cotizaciones = dbr.list(db,sql_cotizaciones,params)
+        
+        ref list = list.create()
+
+        for i = 0; i < list.count(cotizaciones)
+        {
+            ref cot = list.obj(cotizaciones,i)
+
+            sql_cotizacion_info = "
+            SELECT
+                d.iproducto,
+                p.codigo,
+                p.descripcion,
+                d.unidad,
+                ROUND(d.precio,4) AS precio,
+                ROUND(d.cantidad,4) AS cantidad,
+                ROUND((d.precio * d.cantidad),4) AS subtotal,
+                ROUND((d.descuento1 + d.descuento2),4) AS descuentos,
+                ROUND((d.impuesto1 + d.impuesto2 + d.impuesto3 + d.impuesto4),4) AS impuestos,
+                ROUND((((((((IFNULL(d.costototal,0) * IFNULL(d.cantidad,0)) - IFNULL(d.descuento1,0)) - IFNULL(d.descuento2,0)) + IFNULL(d.impuesto1,0)) + IFNULL(d.impuesto2,0)) + IFNULL(d.impuesto3,0)) + IFNULL(d.impuesto4,0)),4) AS importe,
+                d.notas AS notas
+            FROM dcompra d
+                INNER JOIN producto p ON p.sys_pk = d.iproducto
+            WHERE d.fk_compra_detalle = @cotizacion
+            "
+            ref info = dbr.list(db,sql_cotizacion_info,cot)
+            do list.add(list,info)
+        }
+
+        return list
     }
 
     prepareView::&db,&params,&data
@@ -94,8 +132,29 @@ module ""
                     @"doctype": @cCotizacion
                 }
 
+                if not(field.exist(data,"entity")) { data<"entity*"> : dbr.rec(db,ftext(@qry_cmpreq),params) }
+                if @@(data,"entity/tipo") == "D" { data<"detail*"> : dbr.list(db,ftext(@qry_obtener_productos),params) }
+                else if @@(data,"entity/tipo") == "C"
+                {
+                    args<"idcon"> : @@(params,"$_entity_id")
+
+                    conditions = "OR (
+                        NOT IFNULL(req.sys_deleted,0)
+                        AND NOT IFNULL(req.consolidacion,0)
+                        AND req.en = @idcon
+                    )"
+
+                    data<"detail*"> : dbr.list(db,ftext(@qry_cmpreq),args)
+                }
+
                 data<"solicitudes*"> : obtenerSolicitudes(db,@@(params,"$_entity_id"))
-                data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @doctype",args)
+                data<"list_series*"> : dbr.list(db, @qry_list_series, args)
+                break
+            }
+            case "cc"
+            {
+                data<"productos*"> : obtenerProductos(db,@@(params,"$_entity_id"))
+                data<"cotizaciones*"> : obtenerCotizaciones(db,params)
                 break
             }
             default
@@ -128,13 +187,31 @@ module ""
 
     cmp.read::&db,&params
     {
-        _context = url_dcode(field.dstr(params,"_context","{}"))
+        /* _context = url_dcode(field.dstr(params,"_context","{}"))
         if _context == "" { _context = "{}" }
 
         ref data = from.json(_context)
+        do prepareView(db,params,data) */
+
+        new data
+        {
+            @"entity*": dbr.rec(db,ftext(@qry_cmpreq),params)
+        }
         do prepareView(db,params,data)
 
         return data
+    }
+
+    cc.read::&db,&params
+    {
+        new data {}
+        do prepareView(db,params,data)
+        return data
+    }
+
+    cc.pedir::&db,&params,&data
+    {
+        do rise_error(0,to.json(data))
     }
 
     sol.create::&db,&params,&data
@@ -161,7 +238,7 @@ module ""
             @"redaccion": trim(@@(data,"$redaccion"))
             @"notas": trim(@@(data,"$notas"))
             @"req": @@(data,"#req")
-            @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucreo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
         if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }

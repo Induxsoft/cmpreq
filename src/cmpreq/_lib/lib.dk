@@ -111,4 +111,10 @@ module "Funciones de propósito general:lib"
 
         exception{ return @false }
     }
+
+    function getPkUsr(&db,usrId)
+    {
+        new params { @"id": usrId }
+        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
+    }
 }

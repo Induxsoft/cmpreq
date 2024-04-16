@@ -52,9 +52,85 @@ module ""
         LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
         INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
         INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
-    WHERE req.#<@keyfield> = @_entity_id
+    WHERE (req.#<@keyfield> = @_entity_id)
         #<conditions>
     "
+
+    @qry_dcmpreq = "
+    SELECT
+    -- Campos visibles en el editable
+        p.codigo,
+        p.descripcion,
+        d.unidad,
+        d.precio,
+        d.cantidad,
+        (d.precio * d.cantidad) AS subtotal,
+        0 AS descuentos,
+        d.impuestos,
+        ((d.cantidad * d.precio) + d.impuestos) AS importe,
+        IFNULL(d.notas,'') AS notas,
+    -- Campos para el insert
+        d.producto,
+        IFNULL(d.excluido,0) AS excluido,
+    -- Campos extras para operaciones
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i1_tasa,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i2_tasa,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i3compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i3_tasa,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(i.i4compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i4_tasa,
+        TRIM(p.unidad) AS unidada,
+        TRIM(IFNULL(p.unidadb,'')) AS unidadb,
+        TRIM(IFNULL(p.unidadc,'')) AS unidadc,
+        TRIM(IFNULL(p.unidadd,'')) AS unidadd,
+        TRIM(IFNULL(p.unidade,'')) AS unidade,
+        IFNULL(p.factorb,0) AS factorb,
+        IFNULL(p.factorc,0) AS factorc,
+        IFNULL(p.factord,0) AS factord,
+        IFNULL(p.factore,0) AS factore
+    FROM dcmpreq AS d
+        INNER JOIN producto AS p ON p.sys_pk = d.producto
+        INNER JOIN cfgimpuesto AS i ON i.sys_pk = p.impuestos
+    WHERE (d.ref_req = @_entity_id)
+        #<conditions>
+    "
+
+    @qry_buscar_producto = "
+    SELECT
+        p.sys_pk,
+        p.codigo,
+        p.descripcion,
+        p.costoultimo AS precio,
+        1 AS cantidad,
+        0 AS descuentos,
+        TRIM(p.unidad) AS unidada,
+        TRIM(IFNULL(p.unidadb,'')) AS unidadb,
+        TRIM(IFNULL(p.unidadc,'')) AS unidadc,
+        TRIM(IFNULL(p.unidadd,'')) AS unidadd,
+        TRIM(IFNULL(p.unidade,'')) AS unidade,
+        IFNULL(p.factorb,0) AS factorb,
+        IFNULL(p.factorc,0) AS factorc,
+        IFNULL(p.factord,0) AS factord,
+        IFNULL(p.factore,0) AS factore,
+        dvs.codigo AS `divisa`,
+        dvs.tcambio AS tipocambio,
+        imp.nombre AS conf_impuestos,
+        IFNULL(imp.uf_tipoi1,'') AS i1_txt,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i1_tasa,
+        IFNULL(imp.uf_tipoi2,'') AS i2_txt,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i1compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i2_tasa,
+        IFNULL(imp.uf_tipoi3,'') AS i3_txt,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i3compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i3_tasa,
+        IFNULL(imp.uf_tipoi4,'') AS i4_txt,
+        (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i4compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i4_tasa
+    FROM producto AS p
+        INNER JOIN divisa AS dvs ON dvs.sys_pk = p.idivisa
+        INNER JOIN cfgimpuesto AS imp ON imp.sys_pk = p.impuestos
+    WHERE TRUE #<conditions>
+    "
+
+    @qry_buscar_unidad = "SELECT sys_pk, codigo, descripcion FROM rh_unidad_org WHERE TRUE #<conditions>"
+    @qry_buscar_partida = "SELECT pda.sys_pk, pda.id, pda.partida FROM gop_partida AS pda #<joins> WHERE TRUE #<conditions>"
+    @qry_list_series = "SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @doctype"
+    @qry_list_divisas = "SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)"
 
     @qry_cmpcon = "
     SELECT
@@ -77,7 +153,27 @@ module ""
     FROM cmpreq AS con
         INNER JOIN cmpreq_status AS stt ON stt.id = con.`status`
         INNER JOIN divisa AS dvs ON dvs.sys_pk = con.`divisa`
-    WHERE con.#<@keyfield> = @_entity_id
+    WHERE (con.#<@keyfield> = @_entity_id)
+        #<conditions>
+    "
+
+    @qry_obtener_productos = "
+    SELECT
+        p.sys_pk,
+        p.codigo,
+        p.descripcion,
+        d.unidad,
+        d.precio,
+        d.cantidad,
+        (d.precio * d.cantidad) AS subtotal,
+        d.impuestos,
+        ((d.cantidad * d.precio) + d.impuestos) AS importe,
+        IFNULL(d.excluido,0) AS excluido,
+        IFNULL(d.notas,'') AS notas,
+        d.ref_req
+    FROM dcmpreq AS d
+        INNER JOIN producto AS p ON p.sys_pk = d.`producto`
+    WHERE (d.ref_req = @_entity_id)
         #<conditions>
     "
 
@@ -98,13 +194,33 @@ module ""
         b.serie, f.folio,
         pdr.nombre AS proveedor,
         IFNULL(cot.referencia,'') AS cotizacion,
-        IFNULL(DATE_FORMAT(cot.fecha,'%Y-%m-%d'),'') AS fcotizacion
+        IFNULL(DATE_FORMAT(cot.fecha,'%Y-%m-%d'),'') AS fcotizacion,
+        IFNULL((((((cot.subtotal - cot.descuento1) - cot.descuento2) + cot.impuesto1) + cot.impuesto2) + cot.impuesto3) + cot.impuesto4,0) AS ttl_cot
     FROM solcot AS sol
         INNER JOIN foliosdocumentos AS f ON f.sys_pk = sol.folio
         INNER JOIN blockdocumentos AS b ON b.sys_pk = f.block
         INNER JOIN proveedor AS pdr ON pdr.sys_pk = sol.`proveedor`
         LEFT JOIN compra AS cot ON cot.sys_pk = sol.cotizacion
-    WHERE sol.#<@keyfield> = @_entity_id
+    WHERE (sol.#<@keyfield> = @_entity_id)
         #<conditions>
+    "
+
+    @qry_buscar_proveedor = "
+    SELECT 
+        pdr.sys_pk,
+        pdr.codigo,
+        pdr.nombre,
+        tpp.descripcion AS tipo,
+        dvs.sys_pk AS idivisa,
+        dvs.codigo AS cdivisa,
+        dvs.tcambio,
+        pdr.tasaiva,
+        IF(pdr.tasaiva=2,-1,1) AS zimpuesto,
+        zi.const AS zona_impuesto
+    FROM proveedor AS pdr
+        INNER JOIN tipoproveedor AS tpp ON tpp.sys_pk = pdr.tipo
+        INNER JOIN divisa AS dvs ON dvs.sys_pk = pdr.idivisa
+        INNER JOIN ctasasiva AS zi ON zi.id = pdr.tasaiva
+    WHERE TRUE #<conditions>
     "
 }

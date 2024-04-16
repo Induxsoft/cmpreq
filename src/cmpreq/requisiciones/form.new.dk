@@ -144,10 +144,7 @@ module "form.dk"
                             div(class="col-lg-10 col-md-9 col-sm-9")
                             {
                                 label(class="form-label" "for"="ik_unidad_org"){$"Unidad organizacional:"}
-                                "input-key"(name="unidad_org" id="ik_unidad_org" required="true"
-                                    "data-key"="sys_pk"
-                                    "data-search"="codigo"
-                                    "data-text"="descripcion"
+                                "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
                                     "data-value"="#<to.json(dt_unidad_org)>"
                                     "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>"
                                     columns="codigo,descripcion"
@@ -184,10 +181,7 @@ module "form.dk"
                             div(class="col-lg-10 col-md-9 col-sm-9")
                             {
                                 label(class="form-label" "for"="ik_partida_pre"){$"Partida presupuestal:"}
-                                "input-key"(name="partida" id="ik_partida_pre" required="true"
-                                    "data-key"="sys_pk"
-                                    "data-search"="id"
-                                    "data-text"="partida"
+                                "input-key"(name="partida" id="ik_partida_pre" required="true" "data-key"="sys_pk" "data-search"="id" "data-text"="partida"
                                     "data-value"="#<to.json(dt_partida_pre)>"
                                     "data-source"="#<@URL_BUSCAR_PARTIDA_PRE>"
                                     columns="id,partida"

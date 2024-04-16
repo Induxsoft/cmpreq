@@ -46,6 +46,8 @@ module
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"
 	@CMP_SOLCOT = "/!/cmpreq/solcot/"
+	@CMP_IN_PROCESS = "/!/cmpreq/solcot/{ireq}/cmp-in-process/"
+	@CMP_CC = "/!/cmpreq/solcot/{ireq}/cc/"
 
 	//* ======================================== [ AUTHORIZATIONS ]
 }

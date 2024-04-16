@@ -7,89 +7,43 @@ module ""
 
     @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
     @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
+    
     @create_exclude_fields = "sys_lastuser"
     @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
+    
+    @create_alias_fields = ""
+    @update_alias_fields = ""
 
     @list_query = @qry_list_cmpreq
     @read_query = @qry_cmpcon
 
     buscarRequisicion::&db,&params
     {
-        sql = "
-        SELECT
-            req.sys_pk,
-            req.sys_guid,
-            req.referencia,
-            DATE_FORMAT(req.fecha,'%Y-%m-%d') AS fecha,
-            IFNULL(DATE_FORMAT(req.flimite,'%Y-%m-%d'),'') AS flimite,
-            req.subtotal,
-            req.impuestos,
-            (req.subtotal + req.impuestos) AS importe,
-            req.periodo,
-            req.tcambio,
-            req.`status`,
-            IFNULL(req.notas,'') AS notas,
-            IFNULL(pda.partida,'') AS partida_pre,
-            IFNULL(pto.ejercicio,'') AS ejercicio,
-            IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
-            stt.const AS cstatus,
-            dvs.codigo AS cdivisa
-        FROM #<@table_name> AS req
-            LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
-            LEFT JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
-            LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
-            INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
-            INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
-        WHERE NOT IFNULL(req.sys_deleted,0)
-            AND NOT IFNULL(req.consolidacion,0)
-            #<condition>
-        "
-
         if trim(@@(params,"$idcon")) != ""
         {
-            condition = "AND req.en = @idcon"
+            conditions = "OR (
+                NOT IFNULL(req.sys_deleted,0)
+                AND NOT IFNULL(req.consolidacion,0)
+                AND req.en = @idcon
+            )"
         }
         if trim(@@(params,"$search")) != ""
         {
-            condition = "
+            conditions = "OR (
+                NOT IFNULL(req.sys_deleted,0)
+                AND NOT IFNULL(req.consolidacion,0)
                 AND req.en IS NULL
                 AND req.`status` = 10
                 AND (req.referencia LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
-            "
+            )"
         }
 
-        return dbr.list(db,ftext(sql),params)
+        return dbr.list(db,ftext(@qry_cmpreq),params)
     }
 
     obtenerProductos::&db,&params
     {
-        sql = "
-        SELECT
-            p.sys_pk,
-            p.sys_guid,
-            d.ref_req,
-            d.producto,
-            p.codigo,
-            p.descripcion,
-            d.unidad,
-            d.precio,
-            d.cantidad,
-            (d.precio * d.cantidad) AS subtotal,
-            d.impuestos,
-            ((d.cantidad * d.precio) + d.impuestos) AS importe,
-            IFNULL(d.excluido,0) AS excluido,
-            IFNULL(d.notas,'') AS notas
-        FROM dcmpreq AS d
-            INNER JOIN producto AS p ON p.sys_pk = d.producto
-        WHERE d.ref_req = @_entity_id
-        "
-        return dbr.list(db,sql,params)
-    }
-
-    obtenerPkUsr::&db,id
-    {
-        new params { @"id": id }
-        return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)
+        return dbr.list(db,ftext(@qry_obtener_productos),params)
     }
 
     obtenerRequisiciones::&db,idcon
@@ -106,12 +60,12 @@ module ""
         {
             new args
             {
-                @"cRequisicion": @cRequisicion
+                @"doctype": @cRequisicion
             }
 
-            data<"list_series*"> : dbr.list(db,"SELECT sys_pk, serie FROM blockdocumentos WHERE NOT IFNULL(sys_deleted,0) AND activo AND documento = @cRequisicion",args)
+            data<"list_series*"> : dbr.list(db, @qry_list_series, args)
             data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
-            data<"list_divisas*"> : dbr.list(db,"SELECT sys_pk, codigo, tcambio, CONCAT(codigo,' [',descripcion,']') AS `text` FROM divisa WHERE NOT IFNULL(sys_deleted,0)",@null)
+            data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
         }
         else
         {
@@ -178,7 +132,7 @@ module ""
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"ucreo": obtenerPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucreo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
             @"consolidacion": @true
         }
 

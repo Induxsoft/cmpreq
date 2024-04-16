@@ -157,6 +157,7 @@ var solcot =
             curr_obj["icotizacion"] = data.icotizacion;
             curr_obj["cotizacion"] = data.cotizacion;
             curr_obj["fcotizacion"] = data.fcotizacion;
+            curr_obj["ttl_cot"] = data.tcotizacion;
             
             this.table.UpdateRow(curr_row);
         }
@@ -176,6 +177,7 @@ var solcot =
 
         if (curr_row < 0) return;
         if (Object.entries(curr_obj).length < this.table.Columns.length) return;
+        if (!curr_obj.cotizacion) return;
         if (!confirm("¿Desea remover la cotización de la solicitud seleccionada?")) return;
 
         let endpoint = this.url_del_cotizacion.replace("{isol}",curr_obj.sys_pk);
@@ -191,6 +193,7 @@ var solcot =
             curr_obj["icotizacion"] = 0;
             curr_obj["cotizacion"] = "";
             curr_obj["fcotizacion"] = "";
+            curr_obj["ttl_cot"] = 0;
             
             this.table.UpdateRow(curr_row);
         }

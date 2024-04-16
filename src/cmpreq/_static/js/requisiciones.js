@@ -132,8 +132,8 @@ var requisiciones =
             btn_add_row.addEventListener("click", () => { this.table.AddRow() });
             btn_del_row.addEventListener("click", () => { this.table.DeleteCurrentRow() });
 
-            this.table.setInputKey("edt_codigo",ik_producto);
-            this.table.setInputKey("edt_descripcion",ik_producto);
+            this.table.setInputKey("codigo",ik_producto);
+            this.table.setInputKey("descripcion",ik_producto);
             this.setKeyboardShortcuts();
             this.setEventBtnStatus();
             this.setEventTable();
@@ -164,11 +164,7 @@ var requisiciones =
 
             tbl.Events[evt.StartEdition] = (e) => { this.fillUnitCell(e) };
             tbl.Events[evt.BeforeUpdateCell] = (e) => { this.validateRowCells(e) };
-            tbl.Events[evt.ConfirmEdition] = (e) =>
-            {
-                this.calculateAmountsXUnits(e);
-                this.setInsertValues(e);
-            };
+            tbl.Events[evt.ConfirmEdition] = (e) => { this.calculateAmounts(e) };
         },
 
         setEventBtnStatus()
@@ -207,7 +203,7 @@ var requisiciones =
                     return;
                 }
 
-                if (data.status === 20 && this.url_solcot) window.location.href = this.url_solcot + data.sys_pk + "/cmp-in-process/";
+                if (data.status === 20 && this.url_solcot) window.location.href = path_concat(this.url_solcot, data.sys_pk, "/cmp-in-process/");
                 else window.location.reload();
             }
             const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
@@ -227,19 +223,19 @@ var requisiciones =
             let producto = 
             {
                 // campos visibles en el editable.
-                edt_codigo: p.codigo,
-                edt_descripcion: p.descripcion,
-                edt_unidad: p.unidada,
-                edt_precio: i.costo,
-                edt_cantidad: i.cantidad,
-                edt_subtotal: i.subtotal,
-                edt_descuentos: i.descuentos,
-                edt_impuestos: i.impuestos,
-                edt_importe: i.total,
-                edt_notas: "",
+                codigo: p.codigo,
+                descripcion: p.descripcion,
+                unidad: p.unidada,
+                precio: i.costo,
+                cantidad: i.cantidad,
+                subtotal: i.subtotal,
+                descuentos: i.descuentos,
+                impuestos: i.impuestos,
+                importe: i.total,
+                notas: "",
 
                 // campos para el insert.
-                cantidad: i.cantidad,
+                producto: p.sys_pk,
                 costototal: i.costo,
                 descuento1: i.descuentos,
                 descuento2: 0,
@@ -248,19 +244,8 @@ var requisiciones =
                 impuesto2: i.impuesto2,
                 impuesto3: i.impuesto3,
                 impuesto4: i.impuesto4,
-                notas: "",
-                precio: i.costo,
-                status: 1, // cPor_recibir
-                tipocambio: p.tipocambio,
-                unidad: p.unidada,
-                xfacturar: 1.0,
-                producto: p.sys_pk,
 
                 // campos extras para operaciones.
-                subtotal: i.subtotal,
-                descuentos: i.descuentos,
-                impuestos: i.impuestos,
-                importe: i.total,
                 i1_tasa: p.i1_tasa,
                 i2_tasa: p.i2_tasa,
                 i3_tasa: p.i3_tasa,
@@ -287,13 +272,6 @@ var requisiciones =
 
         actualizarProducto(producto, rowIndex) {
             let i = this.calcularImpuestos(producto);
-    
-            producto["edt_precio"] = i.costo;
-            producto["edt_cantidad"] = i.cantidad;
-            producto["edt_subtotal"] = i.subtotal;
-            producto["edt_descuentos"] = i.descuentos;
-            producto["edt_impuestos"] = i.impuestos;
-            producto["edt_importe"] = i.total;
     
             producto["precio"] = i.costo;
             producto["cantidad"] = i.cantidad;
@@ -407,7 +385,7 @@ var requisiciones =
             let producto = this.table?.DataArray[curr_row] ?? {};
 
             if (Object.entries(producto ?? {}).length < 9) return;
-            if (coldef.field !== "edt_unidad") return;
+            if (coldef.field !== "unidad") return;
 
             if (!producto.list_unidades) {
                 producto["list_unidades"] = this.joinUnidades(producto.unidada,producto.unidadb,producto.unidadc,producto.unidadd,producto.unidade);
@@ -423,12 +401,12 @@ var requisiciones =
 
             if (Object.entries(producto ?? {}).length < 9) return;
 
-            if (field === "edt_unidad" && e.text.trim() === "") {
+            if (field === "unidad" && e.text.trim() === "") {
                 show_alert(this.divAlerts,"Debe elegir la unidad.",3);
                 e.cancel = true;
                 return false;
             }
-            if ((field === "edt_precio" || field === "edt_cantidad") && Number(e.text.trim()) <= 0) {
+            if ((field === "precio" || field === "cantidad") && Number(e.text.trim()) <= 0) {
                 show_alert(this.divAlerts,"El valor debe ser mayor que 0.",3);
                 e.cancel = true;
                 return false;
@@ -441,7 +419,7 @@ var requisiciones =
             let producto = this.table?.DataArray[curr_row] ?? {};
 
             if (Object.entries(producto ?? {}).length < 9) return;
-            if (e.coldef.field !== "edt_unidad") return;
+            if (e.coldef.field !== "unidad") return;
             
             this.lastUnit = producto.unidad;
             producto["unidad"] = e.text;
@@ -565,19 +543,23 @@ var requisiciones =
             }
         },
 
-        setInsertValues(e)
+        calculateAmounts(e)
         {
             let curr_row = e.sender.RowIndexOfTd(e.td);
             let field = e.coldef.field;
             let producto = this.table?.DataArray[curr_row] ?? {};
 
             if (Object.entries(producto ?? {}).length < 9) return;
-            if (!["edt_precio","edt_cantidad","edt_notas"].includes(field)) return;
+            if (!["unidad","precio","cantidad"].includes(field)) return;
 
-            if (field === "edt_precio") producto["precio"] = Number(e.text.trim());
-            if (field === "edt_cantidad") producto["cantidad"] = Number(e.text.trim());
-            if (field === "edt_notas") producto["notas"] = e.text.trim();
+            if (field === "unidad") {
+                this.calculateAmountsXUnits(e);
+                return;
+            }
 
+            if (field === "precio") producto["precio"] = Number(e.text.trim());
+            if (field === "cantidad") producto["cantidad"] = Number(e.text.trim());
+            
             this.actualizarProducto(producto,curr_row);
         },
     }
