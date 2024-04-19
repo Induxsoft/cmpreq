@@ -731,6 +731,7 @@ model "erp.requisiciones"
         @"impuestos" decimal(12,4) required
         @"excluido" bool
         @"notas" memo
+        @"pedido" ref:"dcompra" //Fila (partida) del pedido de esta partida (lote) de la requisición
     }
     //Solicitud de cotización a proveedor
     entity "solcot": "TableModel"

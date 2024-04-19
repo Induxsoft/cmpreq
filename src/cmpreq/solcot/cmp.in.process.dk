@@ -324,14 +324,14 @@ module "form.dk"
                         div(class="col-lg-6 col-md-6 col-sm-6")
                         {
                             label(class="form-label" "for"="txt_fenvio"){$"Fecha de envio:"}
-                            input(class="form-control form-control-sm rounded-0" type="date" name="fenvio" value="" id="txt_fenvio" title="Fecha oficial de envío al proveedor")
+                            input(class="form-control form-control-sm rounded-0" type="date" name="fenvio" value="#<lib.hoy('yyyy-MM-dd')>" id="txt_fenvio" title="Fecha oficial de envío al proveedor")
                         }
 
                         div(class="col-12")
                         {
                             label(class="form-label" "for"="ik_proveedor"){$"Proveedor:"}
                             "input-key"(name="iproveedor" id="ik_proveedor" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="nombre" "data-value"="{}"
-                                "data-source"="#<@URL_BUSCAR_PROVEEDOR>" "box-title-text"="Seleccione un proveedor" columns="codigo,nombre,tipo" colcaptions="Código,Nombre,Tipo"
+                                "data-source"="#<@URL_BUSCAR_PROVEEDOR>" "box-title-text"="Seleccione un proveedor" columns="codigo,nombre,tipo,cdivisa" colcaptions="Código,Nombre,Tipo,Divisa"
                                 "control-styles"="
                                     #input_search_container, #input_description_container,
                                     #button_search_container, #button_clear_container {
@@ -346,7 +346,7 @@ module "form.dk"
                         div(class="col-12")
                         {
                             label(class="form-label" "for"="txt_redaccion"){$"Redacción:"}
-                            textarea(class="form-control rounded-0" name="redaccion" id="txt_redaccion" maxlength="32000"){$""}
+                            textarea(class="form-control rounded-0" name="redaccion" id="txt_redaccion" maxlength="32000"){$"#<@('$./solcot_text')>"}
                         }
 
                         div(class="col-12")
@@ -366,7 +366,7 @@ module "form.dk"
 
         div
         {
-            "input-key"(id="ik_cotizacion" "data-key"="sys_pk" "data-search"="referencia" "data-text"="fecha" "data-source"="#<@URL_BUSCAR_COTIZACION>" columns="referencia,fecha,vencimiento" colcaptions="Referencia,Fecha,Vencimiento" "box-title-text"="Seleccione una cotización" "control-styles"="#container{display:none !important;}"){$""}
+            "input-key"(id="ik_cotizacion" "data-key"="sys_pk" "data-search"="referencia" "data-text"="fecha" "data-source"="#<@URL_BUSCAR_COTIZACION>" columns="referencia,fecha,vencimiento,total" colcaptions="Referencia,Fecha,Vencimiento,Total" "box-title-text"="Seleccione una cotización" "control-styles"="#container{display:none !important;}"){$""}
         }
 
         #$

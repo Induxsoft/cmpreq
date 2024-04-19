@@ -29,6 +29,11 @@ module "Funciones de propósito general:lib"
         }
     }
 
+    function between(value, min, max)
+    {
+        return value >= min && value <= max
+    }
+
     function list_years(yearsBack,yearsForward)
     {
         ndt = ndatetime.now()

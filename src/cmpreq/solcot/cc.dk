@@ -18,6 +18,8 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
+    cots_length = list.count(cotizaciones)
+
     function searchProducto(&list,iproducto)
     {
         for i = 0; i < list.count(list)
@@ -33,7 +35,7 @@ module "form.dk"
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
 
         #$
-        button(class="#<btn_cls>" type="submit" id="btn_submit"){$"#<@ICON_SAVE>"}
+        button(class="#<btn_cls>" type="submit" id="btn_submit"){$"#<@ICON_SAVE> Generar pedidos"}
         #!
     }
 
@@ -52,85 +54,133 @@ module "form.dk"
     {
         link(href="#<@CSS_MAIN>" rel="stylesheet")
 
+        style
+        {$'
+            tr th { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
+            tr td { font-size:.8rem; }
+            th { font-size:.9rem; outline:none!important; }
+
+            @media print {
+                body { visibility: hidden; }
+                #section-to-print {
+                    visibility: visible;
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    right: 0;
+                }
+            }
+
+            .bg-light-gray { background-color: #DCDCDC !important; }
+            .bg-yellow { background-color: #ffe484 !important; }
+            .fw-500 { font-weight:500!important; }
+        '}
+
         div(id="work_area" class="container-section")
         {
-            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
-
             form(method="POST" action="./" id="form-cc")
             {
                 #!
                 do uie.printV12FormBar(nav_config)
                 #$
 
-                div(class="" id="div_tbl_cc" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
+                div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
+
+                table(class="table table-sm table-striped" style="width:auto; min-width:100%; max-height:90vh;")
                 {
-                    table(class="table table-sm table-striped")
+                    thead
                     {
-                        thead
+                        tr(class="")
                         {
-                            tr
-                            {
-                                th(class="text-center" colspan="6"){$"Referencia"}
-                                #!
-                                num_cots = list.count(cotizaciones)
-                                repeat num_cots
-                                {
-                                    #$ th(class="text-center" colspan="3"){$"Proveedor #"}
-                                }
-                                #$
-                            }
-                            tr
-                            {
-                                th{$""}
-                                th{$"Descripción"}
-                                th{$"Unidad"}
-                                th{$"Cantidad"}
-                                th{$"Precio"}
-                                th{$"Importe"}
-
-                                #!
-                                repeat num_cots
-                                {
-                                    #$
-                                    th(class="border-start"){$""}
-                                    th{$"P.U"}
-                                    th{$"Total"}
-                                }
-                                #$
-                            }
-                        }
-                        tbody
-                        {
+                            th(class="text-center" colspan="7"){$"Referencia"}
                             #!
-                            for i = 0; i < list.count(productos)
+                            for i = 0; i < cots_length
                             {
-                                ref prod = list.obj(productos,i)
-                                iprod = @@(prod,"#iproducto")
-
-                                #$
-                                tr
-                                {
-                                    td{ input(class="form-check-input" type="radio" name="#<iprod>" value="0" checked="") }
-                                    td{$"#<@@(prod,'$descripcion')>"}
-                                    td{$"#<@@(prod,'$unidad')>"}
-                                    td{$"#<@@(prod,'$cantidad')>"}
-                                    td{$"#<@@(prod,'$precio')>"}
-                                    td{$"#<@@(prod,'$importe')>"}
-
-                                    #!
-                                    for j = 0; j < num_cots
-                                    {
-                                        ref pp = searchProducto(list.obj(cotizaciones,j),iprod)
-                                        #$
-                                        td(class="border-start"){ input(class="form-check-input" type="radio" name="#<iprod>" value="1") }
-                                        td{$"#<@@(pp,'$precio')>"}
-                                        td{$"#<@@(pp,'$importe')>"}
-                                    }
-                                    #$
-                                }
+                                ref cot = list.obj(cotizaciones,i)
+                                proveedor = @@(cot,"$proveedor")
+                                
+                                #$ th(class="text-center" colspan="5"){$"#<proveedor>"}
                             }
                             #$
                         }
+                        tr(class="")
+                        {
+                            th{$""}
+                            th(class=""){$"Descripción"}
+                            th(class=""){$"Unidad"}
+                            th(class=""){$"Cantidad"}
+                            th(class=""){$"Precio"}
+                            th(class=""){$"Impuestos"}
+                            th(class=""){$"Importe"}
+
+                            #!
+                            repeat cots_length
+                            {
+                                #$
+                                th(class="border-start"){$""}
+                                th(class=""){$"P.U"}
+                                th(class=""){$"Descuentos"}
+                                th(class=""){$"Impuestos"}
+                                th(class=""){$"Total"}
+                            }
+                            #$
+                        }
+                    }
+                    tbody
+                    {
+                        #!
+                        for i = 0; i < list.count(productos)
+                        {
+                            ref prod = list.obj(productos,i)
+                            iprod = @@(prod,"#iproducto")
+                            precio_ref = @@(prod,"#precio")
+                            precio_min = precio_ref
+                            check = ""
+
+                            if field.exist(@("&."),"form") { check = ifstr(lib.form(str(iprod),"nm",@null) == 0, "checked", "") }
+                            else { check = "checked" }
+
+                            #$
+                            tr
+                            {
+                                td{ input(class="form-check-input" type="radio" name="#<iprod>" value="0" "#<check>"="") }
+                                td(class="text-start"){$"#<@@(prod,'$descripcion')>"}
+                                td(class="text-center"){$"#<@@(prod,'$unidad')>"}
+                                td(class="text-center"){$"#<@@(prod,'$cantidad')>"}
+                                td(class="text-end"){$"#<@@(prod,'$precio')>"}
+                                td(class="text-end"){$"#<@@(prod,'$impuestos')>"}
+                                td(class="text-end"){$"#<@@(prod,'$importe')>"}
+
+                                #!
+                                for j = 0; j < cots_length
+                                {
+                                    ref cot = list.obj(cotizaciones,j)
+                                    ref pp = searchProducto(@@(cot,"&dcot"),iprod)
+                                    
+                                    iproveedor = @@(cot,"#iproveedor")
+                                    precio_cot = @@(pp,"#precio")
+                                    check = ""
+                                    cell = ""
+
+                                    if field.exist(@("&."),"form") { check = ifstr(lib.form(str(iprod),"nm",@null) == iproveedor, "checked", "") }
+                                    else if check == "" && precio_cot < precio_min {
+                                        precio_min = precio_cot
+                                        check = "checked"
+                                    }
+
+                                    if precio_cot <= precio_min && precio_cot != precio_ref { cell = "bg-success text-white fw-500" }
+
+                                    #$
+                                    td(class="border-start"){ input(class="form-check-input" type="radio" name="#<iprod>" value="#<iproveedor>" "#<check>"="") }
+                                    td(class="text-end #<cell>"){$"#<@@(pp,'$precio')>"}
+                                    td(class="text-end #<cell>"){$"#<@@(pp,'$descuentos')>"}
+                                    td(class="text-end #<cell>"){$"#<@@(pp,'$impuestos')>"}
+                                    td(class="text-end #<cell>"){$"#<@@(pp,'$importe')>"}
+                                }
+                                #$
+                            }
+                        }
+                        #$
                     }
                 }
             }
