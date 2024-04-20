@@ -73,7 +73,7 @@ module "form.dk"
         url_cc = replace(@CMP_CC,"{ireq}",@_entity_id)
 
         #$
-        a(href="#<url_cc>" class="#<btn_cls>" type="button" id="btn_cc"){$"#<@ICON_CHECK_LIST> Pedir"}
+        a(href="#<url_cc>" class="#<btn_cls>" type="button" id="btn_cc"){$"Pedir"}
         #!
         
         if @show_btn_xaprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_xaprobar>" title="Cambiar estado de la requisición"){$"#<@ICON_HOURGLASS> Por Aprobar"} #! }
@@ -250,7 +250,7 @@ module "form.dk"
 
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar"}
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar"}
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-del-solcot" title="Remover solicitud de cotización"){$"#<@ICON_FILE_DASH> Remover"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-can-solcot" title="Cancelar solicitud de cotización"){$"#<@ICON_FILE_CANCEL> Cancelar"}
                     }
                     div(class="" id="div_tbl_solicitudes" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
@@ -273,7 +273,7 @@ module "form.dk"
                                     "edit-th"(type="NoEditable" field="cotizacion" textalign="center"){$"Cotización"}
                                     "edit-th"(type="NoEditable" field="fcotizacion" textalign="center"){$"F. Cotización"}
                                     "edit-th"(type="NoEditable" field="ttl_cot" textalign="end" format="true" thousandssep="true" decs="4"){$"Total"}
-                                    "edit-th"(type="NoEditable" field="completa" textalign="center"){$"Completada"}
+                                    "edit-th"(type="NoEditable" field="completa" textalign="center"){$"Completa"}
                                     "edit-th"(type="NoEditable" field="cancelada" textalign="center"){$"Cancelada"}
                                     "edit-th"(type="NoEditable" field="notas"){$"Notas"}
                                 }
@@ -402,6 +402,7 @@ module "form.dk"
                 solcot.url_change_status = "#<@URL_CHANGE_STATUS>";
                 solcot.url_add_cotizacion = "#<@URL_ADD_COTIZACION>";
                 solcot.url_del_cotizacion = "#<@URL_DEL_COTIZACION>";
+                solcot.url_can_solicitud = "#<@URL_CANCELAR_SOLICITUD>";
                 solcot.url_solcot = "#<@CMP_SOLCOT>";
                 solcot.formId = "form-solcot";
                 solcot.tableId = "tbl_solicitudes";

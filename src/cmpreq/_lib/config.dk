@@ -29,6 +29,7 @@ module
 	@JS_REQUISICIONES = "/$/cmpreq/js/requisiciones.js"
 	@JS_CONSOLIDADOS = "/$/cmpreq/js/consolidados.js"
 	@JS_SOLCOT = "/$/cmpreq/js/solcot.js"
+	@JS_SOLCOT_CC = "/$/cmpreq/js/solcot.cc.js"
 
 	//* ======================================== [ _PACKAGE ]
 	@URL_BUSCAR_UNIDAD_ORG = "/!/cmpreq/requisiciones/?_view=buscar-unidad-org&search=@search"
@@ -42,6 +43,7 @@ module
 	@URL_CHANGE_STATUS = "/!/cmpreq/requisiciones/{ireq}/change-status/"
 	@URL_ADD_COTIZACION = "/!/cmpreq/solcot/{isol}/agregar-cotizacion/"
 	@URL_DEL_COTIZACION = "/!/cmpreq/solcot/{isol}/remover-cotizacion/"
+	@URL_CANCELAR_SOLICITUD = "/!/cmpreq/solcot/{isol}/cancelar-solicitud/"
 
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"

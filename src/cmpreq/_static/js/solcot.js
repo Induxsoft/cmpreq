@@ -1,6 +1,6 @@
 var solcot =
 {
-    url_exit:"", url_get_fultimo:"", url_solcot:"", url_change_status:"", url_add_cotizacion:"", url_del_cotizacion:"",
+    url_exit:"", url_get_fultimo:"", url_solcot:"", url_change_status:"", url_add_cotizacion:"", url_del_cotizacion:"", url_can_solicitud:"",
     formId:"", form:null,
     tableId:"", table:null,
 
@@ -11,7 +11,7 @@ var solcot =
         const btn_del_cot = document.getElementById("btn-del-cot");
         const btn_add_solcot = document.getElementById("btn-add-solcot");
         const btn_edt_solcot = document.getElementById("btn-edt-solcot");
-        const btn_del_solcot = document.getElementById("btn-del-solcot");
+        const btn_can_solcot = document.getElementById("btn-can-solcot");
         const btn_submit = document.getElementById("btn_submit");
         const btn_reset = document.getElementById("btn_reset")
         const mdl_solcot = document.getElementById("mdl_solcot");
@@ -27,7 +27,7 @@ var solcot =
             this.showModal("mdl_solcot");
         });
         btn_edt_solcot.addEventListener("click", () => this.editarSolicitud());
-        btn_del_solcot.addEventListener("click", () => this.removerSolicitud());
+        btn_can_solcot.addEventListener("click", () => this.cancelarSolicitud());
         btn_submit.addEventListener("click", () => this.save());
         mdl_solcot.addEventListener("hide.bs.modal", () => this.form.reset());
         ik_cotizacion.addEventListener("change", (data) => this.agregarCotizacion(data));
@@ -157,7 +157,7 @@ var solcot =
             curr_obj["icotizacion"] = data.icotizacion;
             curr_obj["cotizacion"] = data.cotizacion;
             curr_obj["fcotizacion"] = data.fcotizacion;
-            curr_obj["ttl_cot"] = data.tcotizacion;
+            curr_obj["ttl_cot"] = data.ttl_cot;
             
             this.table.UpdateRow(curr_row);
         }
@@ -199,7 +199,7 @@ var solcot =
         }
         const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
 
-        InduxsoftCrudlModel.InvokeService(endpoint,null,onSuccess,onFailure,"PATCH",false,true,"",true);
+        InduxsoftCrudlModel.InvokeService(endpoint,null,onSuccess,onFailure,"PATCH",false,true);
     },
 
     changeStatus(status)
@@ -269,6 +269,44 @@ var solcot =
         this.fillFormData(curr_obj);
         disableControls(["sel_serie","txt_folio","btn_get_folio","ik_proveedor"]);
         this.showModal("mdl_solcot");
+    },
+
+    cancelarSolicitud()
+    {
+        if (!this.table) return;
+        if (!this.url_can_solicitud) return;
+
+        let curr_row = this.table.CurrentRowIndex();
+        let array = this.table?.DataArray ?? [];
+        let curr_obj = array[curr_row] ?? {};
+
+        if (curr_row < 0) return;
+        if (Object.entries(curr_obj).length < this.table.Columns.length) return;
+        if (curr_obj.cancelada === "Si") return;
+        if (!confirm("¿Desea cancelar la solicitud seleccionada?")) return;
+
+        let endpoint = this.url_can_solicitud.replace("{isol}",curr_obj.sys_pk);
+        let patchdata =
+        {
+            sys_pk: curr_obj.sys_pk,
+            sys_recver: curr_obj.sys_recver
+        }
+
+        const onSuccess = (data) =>
+        {
+            if (data.message) {
+                alert(data.message);
+                return;
+            }
+
+            curr_obj["sys_recver"] = data.sys_recver;
+            curr_obj["cancelada"] = data.cancelada;
+            
+            this.table.UpdateRow(curr_row);
+        }
+        const onFailure = (error) => { alert(error.message ?? JSON.stringify(error)) }
+
+        InduxsoftCrudlModel.InvokeService(endpoint,patchdata,onSuccess,onFailure,"PATCH",false,true);
     },
 
     removerSolicitud()

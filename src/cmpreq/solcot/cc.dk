@@ -18,7 +18,10 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
+    prod_length = list.count(productos)
     cots_length = list.count(cotizaciones)
+    url_exit = replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
+    container = ifstr(cots_length >= 3, 'container-fluid', 'container')
 
     function searchProducto(&list,iproducto)
     {
@@ -35,7 +38,7 @@ module "form.dk"
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
 
         #$
-        button(class="#<btn_cls>" type="submit" id="btn_submit"){$"#<@ICON_SAVE> Generar pedidos"}
+        button(class="#<btn_cls>" type="submit" id="btn_submit"){$"Generar pedidos"}
         #!
     }
 
@@ -45,40 +48,44 @@ module "form.dk"
     {
         @"title": "Cuadro Comparativo"
         @"buttons*": general_act
-        @"urlexit": replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
+        @"urlexit": url_exit
         member @"hidden" { @"print": @true }
     }
-
+    
     #$
-    div(class="container")
+    div(class="#<container>")
     {
         link(href="#<@CSS_MAIN>" rel="stylesheet")
 
         style
         {$'
-            tr th { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
+            tr th { font-size:.9rem; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
             tr td { font-size:.8rem; }
-            th { font-size:.9rem; outline:none!important; }
 
             @media print {
-                body { visibility: hidden; }
+                body { visibility:hidden; }
                 #section-to-print {
-                    visibility: visible;
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    right: 0;
+                    visibility:visible;
+                    position:absolute;
+                    left:0;
+                    top:0;
+                    right:0;
                 }
             }
 
-            .bg-light-gray { background-color: #DCDCDC !important; }
-            .bg-yellow { background-color: #ffe484 !important; }
-            .fw-500 { font-weight:500!important; }
+            .bg-light-gray { background-color:#DCDCDC !important; }
+            .bg-yellow { background-color:#ffe484 !important; }
+            .fw-500 { font-weight:500 !important; }
+            .induxsoft-num-field {
+                border:0;
+                border-radius:0;
+                background-color:transparent;
+            }
         '}
 
         div(id="work_area" class="container-section")
         {
-            form(method="POST" action="./" id="form-cc")
+            form(method="POST" action="./" id="frm_cc")
             {
                 #!
                 do uie.printV12FormBar(nav_config)
@@ -86,101 +93,148 @@ module "form.dk"
 
                 div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
 
-                table(class="table table-sm table-striped" style="width:auto; min-width:100%; max-height:90vh;")
+                div(class="" style="display:blobk; position:relative; overflow-x:auto;")
                 {
-                    thead
+                    table(class="table table-sm border mb-0" id="tbl_cc" style="width:auto; min-width:100%; max-height:90vh;")
                     {
-                        tr(class="")
+                        thead
                         {
-                            th(class="text-center" colspan="7"){$"Referencia"}
-                            #!
-                            for i = 0; i < cots_length
-                            {
-                                ref cot = list.obj(cotizaciones,i)
-                                proveedor = @@(cot,"$proveedor")
-                                
-                                #$ th(class="text-center" colspan="5"){$"#<proveedor>"}
-                            }
-                            #$
-                        }
-                        tr(class="")
-                        {
-                            th{$""}
-                            th(class=""){$"Descripción"}
-                            th(class=""){$"Unidad"}
-                            th(class=""){$"Cantidad"}
-                            th(class=""){$"Precio"}
-                            th(class=""){$"Impuestos"}
-                            th(class=""){$"Importe"}
-
-                            #!
-                            repeat cots_length
-                            {
-                                #$
-                                th(class="border-start"){$""}
-                                th(class=""){$"P.U"}
-                                th(class=""){$"Descuentos"}
-                                th(class=""){$"Impuestos"}
-                                th(class=""){$"Total"}
-                            }
-                            #$
-                        }
-                    }
-                    tbody
-                    {
-                        #!
-                        for i = 0; i < list.count(productos)
-                        {
-                            ref prod = list.obj(productos,i)
-                            iprod = @@(prod,"#iproducto")
-                            precio_ref = @@(prod,"#precio")
-                            precio_min = precio_ref
-                            check = ""
-
-                            if field.exist(@("&."),"form") { check = ifstr(lib.form(str(iprod),"nm",@null) == 0, "checked", "") }
-                            else { check = "checked" }
-
-                            #$
                             tr
                             {
-                                td{ input(class="form-check-input" type="radio" name="#<iprod>" value="0" "#<check>"="") }
-                                td(class="text-start"){$"#<@@(prod,'$descripcion')>"}
-                                td(class="text-center"){$"#<@@(prod,'$unidad')>"}
-                                td(class="text-center"){$"#<@@(prod,'$cantidad')>"}
-                                td(class="text-end"){$"#<@@(prod,'$precio')>"}
-                                td(class="text-end"){$"#<@@(prod,'$impuestos')>"}
-                                td(class="text-end"){$"#<@@(prod,'$importe')>"}
+                                th(class="text-center" colspan="7"){$"Referencia"}
+                                #!
+                                for i = 0; i < cots_length
+                                {
+                                    ref cot = list.obj(cotizaciones,i)
+                                    proveedor = @@(cot,"$proveedor")
+                                    
+                                    #$ th(class="text-center" colspan="5"){$"#<proveedor>"}
+                                }
+                                #$
+                            }
+                            tr
+                            {
+                                th{$""}
+                                th(class="text-center"){$"Descripción"}
+                                th(class="text-center"){$"Unidad"}
+                                th(class="text-center"){$"Cantidad"}
+                                th(class="text-center"){$"Precio"}
+                                th(class="text-center"){$"Impuestos"}
+                                th(class="text-center"){$"Importe"}
 
                                 #!
-                                for j = 0; j < cots_length
+                                repeat cots_length
                                 {
-                                    ref cot = list.obj(cotizaciones,j)
-                                    ref pp = searchProducto(@@(cot,"&dcot"),iprod)
-                                    
-                                    iproveedor = @@(cot,"#iproveedor")
-                                    precio_cot = @@(pp,"#precio")
-                                    check = ""
-                                    cell = ""
-
-                                    if field.exist(@("&."),"form") { check = ifstr(lib.form(str(iprod),"nm",@null) == iproveedor, "checked", "") }
-                                    else if check == "" && precio_cot < precio_min {
-                                        precio_min = precio_cot
-                                        check = "checked"
-                                    }
-
-                                    if precio_cot <= precio_min && precio_cot != precio_ref { cell = "bg-success text-white fw-500" }
-
                                     #$
-                                    td(class="border-start"){ input(class="form-check-input" type="radio" name="#<iprod>" value="#<iproveedor>" "#<check>"="") }
-                                    td(class="text-end #<cell>"){$"#<@@(pp,'$precio')>"}
-                                    td(class="text-end #<cell>"){$"#<@@(pp,'$descuentos')>"}
-                                    td(class="text-end #<cell>"){$"#<@@(pp,'$impuestos')>"}
-                                    td(class="text-end #<cell>"){$"#<@@(pp,'$importe')>"}
+                                    th(class="text-centerborder-start"){$""}
+                                    th(class="text-center"){$"P.U"}
+                                    th(class="text-center"){$"Descuentos"}
+                                    th(class="text-center"){$"Impuestos"}
+                                    th(class="text-center"){$"Total"}
                                 }
                                 #$
                             }
                         }
-                        #$
+                        tbody
+                        {
+                            #!
+                            for i = 0; i < prod_length
+                            {
+                                ref prod = list.obj(productos,i)
+                                iproducto = @@(prod,"#iproducto")
+                                precio_ref = @@(prod,"#precio")
+                                precio_min = precio_ref
+                                row = (i+1)
+                                check = ""
+
+                                if field.exist(@("&."),"form")
+                                {
+                                    value = lib.form(str(row),"tx",@null)
+                                    ref part = split(value,";")
+                                    check = ifstr(list.num(part,0) == 0, "checked", "")
+                                }
+                                else { check = "checked" }
+
+                                #$
+                                tr
+                                {
+                                    td(class="text-center")
+                                    {
+                                        input(class="form-check-input" type="radio" name="#<row>" value="0;0;0;0" id="rd_#<row>_0" onclick="cc.asignar()" "#<check>"="")
+                                    }
+                                    td(class="text-start"){$"#<@@(prod,'$descripcion')>"}
+                                    td(class="text-center"){$"#<@@(prod,'$unidad')>"}
+                                    td(class="text-center"){$"#<@@(prod,'#cantidad')>"}
+                                    td(class="text-end"){$"#<@@(prod,'#precio')>"}
+                                    td(class="text-end"){$"#<@@(prod,'#impuestos')>"}
+                                    td(class="text-end"){$"#<@@(prod,'#importe')>"}
+
+                                    #!
+                                    for j = 0; j < cots_length
+                                    {
+                                        ref cot = list.obj(cotizaciones,j)
+                                        ref pp = searchProducto(@@(cot,"&dcot"),iproducto)
+                                        
+                                        iproveedor = @@(cot,"#iproveedor")
+                                        icotizacion = @@(cot,"icotizacion")
+                                        idetalle = @@(pp,"#idetalle")
+                                        precio_cot = @@(pp,"#precio")
+                                        pdr = (j+1)
+                                        check = ""
+                                        cls_cell = ""
+                                        cls_input = ""
+
+                                        if field.exist(@("&."),"form")
+                                        {
+                                            value = lib.form(str(row),"tx",@null)
+                                            ref part = split(value,";")
+                                            check = ifstr(list.num(part,0) == iproveedor, "checked", "")
+                                        }
+                                        else if check == "" && precio_cot < precio_min
+                                        {
+                                            precio_min = precio_cot
+                                            check = "checked"
+                                        }
+
+                                        if precio_cot <= precio_min && precio_cot != precio_ref
+                                        {
+                                            cls_cell = "bg-success text-white fw-500"
+                                            cls_input = "bg-transparent text-white fw-500"
+                                        }
+
+                                        #$
+                                        td(class="text-center border-start")
+                                        {
+                                            input(class="form-check-input" type="radio" name="#<row>" value="#<iproveedor>;#<icotizacion>;#<idetalle>;#<iproducto>" id="rd_#<row>_#<pdr>" onclick="cc.asignar()" "data-icot"="#<icotizacion>" "data-idet"="#<idetalle>" "#<check>"="")
+                                        }
+                                        td(class="text-end #<cls_cell>" id="td_pu_#<row>_#<pdr>" "data-value"="#<@@(pp,'#precio')>"){$"#<@@(pp,'#precio')>"}
+                                        td(class="text-end #<cls_cell>" id="td_dto_#<row>_#<pdr>" "data-value"="#<@@(pp,'#descuentos')>"){$"#<@@(pp,'#descuentos')>"}
+                                        td(class="text-end #<cls_cell>" id="td_imp_#<row>_#<pdr>" "data-value"="#<@@(pp,'#impuestos')>"){$"#<@@(pp,'#impuestos')>"}
+                                        td(class="text-end #<cls_cell>" id="td_ttl_#<row>_#<pdr>" "data-value"="#<@@(pp,'#importe')>"){$"#<@@(pp,'#importe')>"}
+                                    }
+                                    #$
+                                }
+                            }
+                            #$
+                        }
+                        tfoot
+                        {
+                            tr
+                            {
+                                td(class="text-end fw-bolder" colspan="7"){$"Total cotizado:"}
+                                #!
+                                for i = 0; i < cots_length
+                                {
+                                    #$ td(class="text-end fw-bolder" colspan="5" id="td_ttl_#<(i+1)>"){$"&nbsp;"}
+                                }
+                                #$
+                            }
+                            tr
+                            {
+                                td(class="text-end fw-bolder" colspan="7"){$"Total pedido:"}
+                                td(class="text-start fw-bolder" colspan="#<(5 * cots_length)>" id="td_ttl_pedido"){$""}
+                            }
+                        }
                     }
                 }
             }
@@ -188,10 +242,14 @@ module "form.dk"
 
         #$
         script(src="#<@JS_MAIN>"){$""}
+        script(src="#<@JS_SOLCOT_CC>"){$""}
 		script(type="text/javascript")
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
-                // code...
+                cc.url_exit = "#<url_exit>";
+                cc.prod_length = #<prod_length>;
+                cc.cots_length = #<cots_length>;
+                cc.init();
             });
 		'}
     }

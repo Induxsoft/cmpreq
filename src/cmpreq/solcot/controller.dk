@@ -24,6 +24,10 @@ module ""
             point @update to sol.removerCotizacion
             break
         }
+        case "cancelar-solicitud"
+        {
+            point @update to sol.cancelar
+        }
         case "cmp-in-process"
         {
             @form_view = "cmp.in.process.dk"

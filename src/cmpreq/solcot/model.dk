@@ -97,6 +97,7 @@ module ""
         FROM solcot AS sol
             INNER JOIN proveedor AS pdr ON pdr.sys_pk = sol.`proveedor`
         WHERE NOT IFNULL(sol.sys_deleted,0)
+            AND NOT IFNULL(sol.cancelada,0)
             AND sol.cotizacion IS NOT NULL
             AND sol.req = @_entity_id ORDER BY sol.sys_pk
         "
@@ -110,6 +111,7 @@ module ""
 
             sql_cotizacion = "
             SELECT
+                d.sys_pk AS idetalle,
                 d.iproducto,
                 p.codigo,
                 p.descripcion,
@@ -179,26 +181,6 @@ module ""
         }
     }
 
-    sol.agregarCotizacion::&db,&params,&data
-    {
-        new solcot
-        {
-            @"sys_pk": @@(data,"#sys_pk")
-            @"sys_timestamp*": now()
-            @"sys_recver": @@(data,"#sys_recver")
-            @"cotizacion": @@(data,"#cotizacion")
-        }
-
-        ref entity = entity.update(db,params,solcot)
-        return entity
-    }
-
-    sol.removerCotizacion::&db,&params,&data
-    {
-        do dbr.execute(db,"UPDATE solcot SET cotizacion = NULL WHERE sys_pk = @_entity_id",params)
-        return entity.read(db,params)
-    }
-
     cmp.read::&db,&params
     {
         /* _context = url_dcode(field.dstr(params,"_context","{}"))
@@ -226,7 +208,28 @@ module ""
     cc.pedir::&db,&params,&data
     {
         @use_transaction = @false
-        do rise_error(0,to.json(data))
+        
+        ref list = list.create_from_fields(data)
+        ref asignados = list.create()
+
+        for i = 0; i < list.count(list)
+        {
+            row = list.str(list,i)
+            val = field.str(data,row)
+            ref part = split(val,";")
+            
+            new info
+            {
+                @"iproveedor": list.num(part,0)
+                @"icotizacion": list.num(part,1)
+                @"idetalle": list.num(part,2)
+                @"iproducto": list.num(part,3)
+            }
+
+            do list.add(asignados,info)
+        }
+
+        do rise_error(0,to.json(asignados))
 
         exception
         {
@@ -243,6 +246,40 @@ module ""
             do prepareView(db,params,data)
             do rise_error(code,error)
         }
+    }
+
+    sol.agregarCotizacion::&db,&params,&data
+    {
+        new solcot
+        {
+            @"sys_pk": @@(data,"#sys_pk")
+            @"sys_timestamp*": now()
+            @"sys_recver": @@(data,"#sys_recver")
+            @"cotizacion": @@(data,"#cotizacion")
+        }
+
+        ref entity = entity.update(db,params,solcot)
+        return entity
+    }
+
+    sol.removerCotizacion::&db,&params,&data
+    {
+        do dbr.execute(db,"UPDATE solcot SET cotizacion = NULL WHERE sys_pk = @_entity_id",params)
+        return entity.read(db,params)
+    }
+
+    sol.cancelar::&db,&params,&data
+    {
+        new solcot
+        {
+            @"sys_pk": @@(data,"#sys_pk")
+            @"sys_timestamp*": now()
+            @"sys_recver": @@(data,"#sys_recver")
+            @"cancelada": @true
+        }
+
+        ref entity = entity.update(db,params,solcot)
+        return entity
     }
 
     sol.create::&db,&params,&data
