@@ -91,7 +91,7 @@ module "form.dk"
                 do uie.printV12FormBar(nav_config)
                 #$
 
-                div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
+                div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')> overflow-auto"){$"#<@('$error/message')>"}
 
                 div(class="" style="display:blobk; position:relative; overflow-x:auto;")
                 {

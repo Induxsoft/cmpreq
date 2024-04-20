@@ -8,6 +8,36 @@ module "Funciones de propósito general:lib"
         return date_str(now(),str(fmt))
     }
 
+    function between(value, min, max)
+    {
+        return value >= min && value <= max
+    }
+
+    function record_combine(&obj1,&obj2)
+    {
+        return record.copyexin(obj2,obj1,"*",",","",":")
+    }
+
+    function newrec()
+    {
+        new record
+        {
+            @"sys_pk": 0
+            @"sys_guid": uuid()
+            @"sys_dtcreated*": now()
+            @"sys_timestamp*": now()
+            @"sys_info": ""
+            @"sys_user": ""
+            @"sys_lastuser": ""
+            @"sys_exported": @false
+            @"sys_dtexported*": @null
+            @"sys_recver": 0
+            @"sys_deleted": @false
+            @"sys_lock": 0
+        }
+        return record
+    }
+
     function date_format(str,fmt)
     {
         fecha = trim(str(str))
@@ -27,11 +57,6 @@ module "Funciones de propósito general:lib"
             do clear_exceptions()
             return ""
         }
-    }
-
-    function between(value, min, max)
-    {
-        return value >= min && value <= max
     }
 
     function list_years(yearsBack,yearsForward)

@@ -12,6 +12,7 @@ module
 	//* ======================================== [ CONSTANTS ]
 	// cdocumentos
 	@cCotizacion = 1
+	@cPedido = 2
 	@cRequisicion = 70
 	// cmpreq_status
 	@stt_borrador = 0
@@ -20,6 +21,12 @@ module
 	@stt_nproceso = 20
 	@stt_completado = 30
 	@stt_cancelado = 99
+	// cstatusadministrativos
+	@stt_adm_na = 0
+	@stt_adm_abierto = 1
+	@stt_adm_cerrado = 2
+	@stt_adm_procesado = 3
+	@stt_adm_cancelado = 99
 
 	@default_max_rows = 250 // limite de registros para las vistas de lista
 
@@ -44,6 +51,7 @@ module
 	@URL_ADD_COTIZACION = "/!/cmpreq/solcot/{isol}/agregar-cotizacion/"
 	@URL_DEL_COTIZACION = "/!/cmpreq/solcot/{isol}/remover-cotizacion/"
 	@URL_CANCELAR_SOLICITUD = "/!/cmpreq/solcot/{isol}/cancelar-solicitud/"
+	@URL_AGREGAR_PEDIDO = "/!/compras/compras/_new/"
 
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"

@@ -198,6 +198,80 @@ module ""
         return data
     }
 
+    cc.obtenerCotizacionesDeAsignados::&db,&data
+    {
+        ref list = list.create_from_fields(data)
+        ref asignados = record.create()
+
+        for i = 0; i < list.count(list)
+        {
+            row = list.str(list,i)
+            val = field.str(data,row)
+            ref part = split(val,";")
+
+            iproveedor = list.num(part,0)
+            icotizacion = list.num(part,1)
+            idetalle = list.num(part,2)
+            iproducto = list.num(part,3)
+            
+            new info
+            {
+                @"iproveedor": iproveedor
+                @"icotizacion": icotizacion
+                @"idetalle": idetalle
+                @"iproducto": iproducto
+            }
+
+            keycot = "C" + str(icotizacion)
+
+            if iproveedor > 0 && not(field.exist(asignados,keycot))
+            {
+                ref cotizacion = dbr.rec(db,"SELECT * FROM compra WHERE sys_pk = @icotizacion",info)
+                asignados<keycot+"*"> : cotizacion
+            }
+
+            if iproveedor > 0
+            {
+                if not(field.exist(asignados,ftext("#<keycot>/_detalle"))) { asignados<keycot+"/_detalle*"> : list.create() }
+
+                ref detalle = dbr.rec(db,"SELECT * FROM dcompra WHERE fk_compra_detalle = @icotizacion AND sys_pk = @idetalle",info)
+                do list.add(@@(asignados,ftext("&#<keycot>/_detalle")),detalle)
+            }
+        }
+
+        return asignados
+    }
+
+    cc.generarPedido::&db,&params,&data
+    {
+        ref_cmpreq = dbr.str(db,"SELECT referencia FROM cmpreq WHERE sys_pk = @_entity_id",params)
+
+        ref pedido = lib.record_combine(data,lib.newrec())
+        using pedido
+        {
+            @"documento": @cPedido
+            @"referencia": path.concat(ref_cmpreq,@@(pedido,"$referencia"))
+            @"statusadministrativo": @stt_adm_cerrado
+        }
+
+        do rise_error(0,to.json(pedido))
+
+        @table_name = "compra"
+        @read_query = "select sys_pk AS ipedido FROM #<@table_name> WHERE #<@keyfield> = @_entity_id"
+
+        using @childs
+        {
+            member "_detalle"
+            {
+                @"joinfield": "fk_compra_detalle"
+                @"keyfield": "sys_pk"
+                @"table": "dcompra"
+                @"select_query": "SELECT sys_pk AS idetalle, iproducto FROM dcompra WHERE fk_compra_detalle = @ipedido"
+                @"fields": "cantidad,costototal,descuento1,descuento2,factor,impuesto1,impuesto2,impuesto3,impuesto4,notas,precio,status,tipocambio,unidad,xfacturar,documento,doc_partida,iproducto"
+            }
+        }
+    }
+
     cc.read::&db,&params
     {
         new data {}
@@ -209,27 +283,20 @@ module ""
     {
         @use_transaction = @false
         
-        ref list = list.create_from_fields(data)
-        ref asignados = list.create()
+        ref asignados = cc.obtenerCotizacionesDeAsignados(db,data)
 
+        do dbr.begin(db)
+
+        ref list = list.create_from_fields(asignados)
         for i = 0; i < list.count(list)
         {
-            row = list.str(list,i)
-            val = field.str(data,row)
-            ref part = split(val,";")
-            
-            new info
-            {
-                @"iproveedor": list.num(part,0)
-                @"icotizacion": list.num(part,1)
-                @"idetalle": list.num(part,2)
-                @"iproducto": list.num(part,3)
-            }
+            keycot = list.str(list,i)
+            ref cot = field.obj(asignados,keycot)
 
-            do list.add(asignados,info)
+            do cc.generarPedido(db,params,cot)
         }
 
-        do rise_error(0,to.json(asignados))
+        do dbr.commit(db)
 
         exception
         {
