@@ -293,13 +293,30 @@ var consolidados =
             console.log(this.fullProdArray);
         },
 
-        obtenerProductos(cmpreqId)
+        async obtenerProductos(cmpreqId)
         {
             if (!cmpreqId) return;
+            if (!this.url_get_productos) return;
 
             let url = this.url_get_productos.replace("{ireq}",cmpreqId);
 
-            fetch(url).then(response => response.json())
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
+
+                (data??[]).forEach(prod => {
+                    this.agregarProducto(prod);
+                });
+            } catch (error) {
+                console.error(error)
+            }
+
+            /* fetch(url).then(response => response.json())
             .then(data => {
                 if (data.message) {
                     alert(data.message);
@@ -310,7 +327,7 @@ var consolidados =
                     this.agregarProducto(prod);
                 });
             })
-            .catch(error => console.error(error));
+            .catch(error => console.error(error)); */
         },
 
         validarRequisicion(data)

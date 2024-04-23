@@ -117,22 +117,22 @@ module "form.dk"
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
 
-                fieldset(class="d-flex justify-content-between flex-wrap gap-2" disabled="")
+                div(class="row")
                 {
-                    label(class="form-label d-lg-flex align-items-center gap-1")
+                    div(class="col-lg-5 col-md-5 col-sm-12 text-md-start d-lg-flex align-items-center justify-content-lg-start gap-1")
                     {
-                        h6(class="my-0"){$"Unidad organizacional:"}
-                        input(class="form-control-plaintext w-auto py-0" type="text" name="" value="#<@@(cmpreq,'$unidad_org')>" spellcheck="false")
+                        h6(class="my-0"){$"Unidad Organizacional:"}
+                        p(class="my-0"){$"#<@@(cmpreq,'$unidad_org')>"}
                     }
-                    label(class="form-label d-lg-flex align-items-center gap-1")
+                    div(class="col-lg-2 col-md-2 col-sm-12 text-md-center d-lg-flex align-items-center justify-content-lg-center gap-1")
                     {
                         h6(class="my-0"){$"Ejercicio:"}
-                        input(class="form-control-plaintext w-auto py-0" type="text" name="" value="#<@@(cmpreq,'$ejercicio')>" spellcheck="false")
+                        p(class="my-0"){$"#<@@(cmpreq,'$ejercicio')>"}
                     }
-                    label(class="form-label d-lg-flex align-items-center gap-1")
+                    div(class="col-lg-5 col-md-5 col-sm-12 text-md-end d-lg-flex align-items-center justify-content-lg-end gap-1")
                     {
-                        h6(class="my-0"){$"Partida presupuestal:"}
-                        input(class="form-control-plaintext w-auto py-0" type="text" name="" value="#<@@(cmpreq,'$partida_pre')>" spellcheck="false")
+                        h6(class="my-0"){$"Partida Presupuestal:"}
+                        p(class="my-0"){$"#<@@(cmpreq,'$partida_pre')>"}
                     }
                 }
 

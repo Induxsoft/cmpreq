@@ -165,9 +165,9 @@ module ""
         d.unidad,
         d.precio,
         d.cantidad,
-        (d.precio * d.cantidad) AS subtotal,
+        ROUND(d.precio * d.cantidad, 4) AS subtotal,
         d.impuestos,
-        ((d.cantidad * d.precio) + d.impuestos) AS importe,
+        ROUND((d.precio * d.cantidad) + d.impuestos, 4) AS importe,
         IFNULL(d.excluido,0) AS excluido,
         IFNULL(d.notas,'') AS notas,
         d.ref_req

@@ -18,6 +18,8 @@ model "erp.requisiciones"
     entity "cformaspago" : "EnumModel" {}
     // Enumeración de estados administrativos
     entity "cstatusadministrativos" : "EnumModel" {}
+    // Enumeración de estados para el detalle de la compra
+    entity "cstatusdetallecompra" : "EnumModel" {}
     // Enumeración de estados de entrega
     entity "cstatusentrega" : "EnumModel" {}
     // Enumeración de estados de facturación
@@ -685,6 +687,29 @@ model "erp.requisiciones"
         @"uf_iaduana" int
         @"uf_numdocaduanero" string(200)
         @"uf_fechadocaduanero" date
+    }
+    // Detalle de las compras (productos adquiridos)
+    entity "dcompra" : "TableModel"
+    {
+        @"cantidad" decimal(18,8)
+        @"costototal" decimal(18,8)
+        @"descuento1" decimal(18,8)
+        @"descuento2" decimal(18,8)
+        @"factor" decimal(18,8)
+        @"impuesto1" decimal(18,8)
+        @"impuesto2" decimal(18,8)
+        @"impuesto3" decimal(18,8)
+        @"impuesto4" decimal(18,8)
+        @"notas" string(255)
+        @"precio" decimal(18,8)
+        @"status" ref:"cstatusdetallecompra" required
+        @"tipocambio" decimal(18,8)
+        @"unidad" string(10) required
+        @"xfacturar" decimal(18,8)
+        @"documento" ref:"compra"
+        @"doc_partida" ref:"dcompra"
+        @"iproducto" ref:"producto" required
+        @"fk_compra_detalle" ref:"compra" required
     }
 
     //* ======================================== [ ENTIDADES PRINCIPALES ]

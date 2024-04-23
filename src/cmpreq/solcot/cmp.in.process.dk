@@ -109,17 +109,17 @@ module "form.dk"
 
                 div(class="row #<ifstr(@tipo=='D','','d-none')>")
                 {
-                    div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
+                    div(class="col-lg-5 col-md-5 col-sm-12 text-md-start d-lg-flex align-items-center justify-content-lg-start gap-1")
                     {
                         h6(class="my-0"){$"Unidad Organizacional:"}
                         p(class="my-0"){$"#<@@(entity,'$unidad_org')>"}
                     }
-                    div(class="col-lg-2 col-md-2 col-sm-12 d-lg-flex align-items-center gap-1")
+                    div(class="col-lg-2 col-md-2 col-sm-12 text-md-center d-lg-flex align-items-center justify-content-lg-center gap-1")
                     {
                         h6(class="my-0"){$"Ejercicio:"}
                         p(class="my-0"){$"#<@@(entity,'$ejercicio')>"}
                     }
-                    div(class="col-lg-5 col-md-5 col-sm-12 d-lg-flex align-items-center gap-1")
+                    div(class="col-lg-5 col-md-5 col-sm-12 text-md-end d-lg-flex align-items-center justify-content-lg-end gap-1")
                     {
                         h6(class="my-0"){$"Partida Presupuestal:"}
                         p(class="my-0"){$"#<@@(entity,'$partida_pre')>"}
@@ -248,9 +248,9 @@ module "form.dk"
 
                         small(class="text-muted"){$"|"}
 
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar"}
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar"}
-                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-can-solcot" title="Cancelar solicitud de cotización"){$"#<@ICON_FILE_CANCEL> Cancelar"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-solcot" title="Agregar solicitud de cotización"){$"#<@ICON_DOCUMENT> Agregar solicitud"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-edt-solcot" title="Editar solicitud de cotización"){$"#<@ICON_FILE_EDIT> Editar solicitud"}
+                        button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-can-solcot" title="Cancelar solicitud de cotización"){$"#<@ICON_FILE_CANCEL> Cancelar solicitud"}
                     }
                     div(class="" id="div_tbl_solicitudes" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {

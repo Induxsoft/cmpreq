@@ -14,7 +14,7 @@ module ""
     // @create_alias_fields = ""
     // @update_alias_fields = ""
 
-    @read_query = @qry_solcot
+    @read_query = ftext(@qry_solcot)
 
     buscarProveedor::&db,&params
     {
@@ -61,30 +61,41 @@ module ""
         new params { @"reqid": reqid }
 
         conditions = "OR (NOT IFNULL(sol.sys_deleted,0) AND sol.req = @reqid)"
-        return dbr.list(db,ftext(@read_query),params)
+        return dbr.list(db,ftext(@qry_solcot),params)
     }
 
-    obtenerProductos::&db,idcon
+    obtenerProductos::&db,id,tipo
     {
-        new params { @"idcon": idcon }
+        if tipo == "D"
+        {
+            new params { @"_entity_id": id }
+            return dbr.list(db,ftext(@qry_obtener_productos),params)
+        }
 
-        conditions = "OR (d.ref_req IN (SELECT sys_pk FROM cmpreq WHERE en = @idcon))"
-        @qry_obtener_productos = ftext(@qry_obtener_productos)
+        if tipo == "C"
+        {
+            new params { @"idcon": id }
 
-        sql_consol_prods = "
-        SELECT
-            sys_pk AS iproducto,
-            descripcion,
-            unidad,
-            precio,
-            ROUND(SUM(cantidad),4) AS cantidad,
-            ROUND(SUM(impuestos),4) AS impuestos,
-            ROUND(SUM(importe),4) AS importe,
-            excluido
-        FROM (#<@qry_obtener_productos>) AS res
-        GROUP BY res.sys_pk
-        "
-        return dbr.list(db,ftext(sql_consol_prods),params)
+            conditions = "OR (d.ref_req IN (SELECT sys_pk FROM cmpreq WHERE en = @idcon))"
+            @qry_obtener_productos = ftext(@qry_obtener_productos)
+
+            sql_consol_prods = "
+            SELECT
+                sys_pk,
+                descripcion,
+                unidad,
+                precio,
+                ROUND(SUM(cantidad),4) AS cantidad,
+                ROUND(SUM(impuestos),4) AS impuestos,
+                ROUND(SUM(importe),4) AS importe,
+                excluido
+            FROM (#<@qry_obtener_productos>) AS res
+            GROUP BY res.sys_pk
+            "
+            return dbr.list(db,ftext(sql_consol_prods),params)
+        }
+
+        return list.create()
     }
 
     obtenerCotizaciones::&db,&params
@@ -99,7 +110,8 @@ module ""
         WHERE NOT IFNULL(sol.sys_deleted,0)
             AND NOT IFNULL(sol.cancelada,0)
             AND sol.cotizacion IS NOT NULL
-            AND sol.req = @_entity_id ORDER BY sol.sys_pk
+            AND sol.req = @_entity_id
+        ORDER BY sol.sys_pk
         "
         ref solicitudes = dbr.list(db,sql_solicitudes,params)
         
@@ -169,7 +181,9 @@ module ""
             }
             case "cc"
             {
-                data<"productos*"> : obtenerProductos(db,@@(params,"$_entity_id"))
+                if not(field.exist(data,"entity")) { data<"entity*"> : dbr.rec(db,ftext(@qry_cmpreq),params) }
+
+                data<"productos*"> : obtenerProductos(db, @@(params,"$_entity_id"), @@(data,"entity/tipo"))
                 data<"cotizaciones*"> : obtenerCotizaciones(db,params)
                 break
             }
@@ -181,137 +195,178 @@ module ""
         }
     }
 
-    cmp.read::&db,&params
+    module "Vista en proceso de una requisición (cmp.in.process.dk):cmp"
     {
-        /* _context = url_dcode(field.dstr(params,"_context","{}"))
-        if _context == "" { _context = "{}" }
-
-        ref data = from.json(_context)
-        do prepareView(db,params,data) */
-
-        new data
+        read::&db,&params
         {
-            @"entity*": dbr.rec(db,ftext(@qry_cmpreq),params)
-        }
-        do prepareView(db,params,data)
+            /* _context = url_dcode(field.dstr(params,"_context","{}"))
+            if _context == "" { _context = "{}" }
 
-        return data
-    }
+            ref data = from.json(_context)
+            do prepareView(db,params,data) */
 
-    cc.obtenerCotizacionesDeAsignados::&db,&data
-    {
-        ref list = list.create_from_fields(data)
-        ref asignados = record.create()
-
-        for i = 0; i < list.count(list)
-        {
-            row = list.str(list,i)
-            val = field.str(data,row)
-            ref part = split(val,";")
-
-            iproveedor = list.num(part,0)
-            icotizacion = list.num(part,1)
-            idetalle = list.num(part,2)
-            iproducto = list.num(part,3)
-            
-            new info
+            new data
             {
-                @"iproveedor": iproveedor
-                @"icotizacion": icotizacion
-                @"idetalle": idetalle
-                @"iproducto": iproducto
+                @"entity*": dbr.rec(db,ftext(@qry_cmpreq),params)
             }
-
-            keycot = "C" + str(icotizacion)
-
-            if iproveedor > 0 && not(field.exist(asignados,keycot))
-            {
-                ref cotizacion = dbr.rec(db,"SELECT * FROM compra WHERE sys_pk = @icotizacion",info)
-                asignados<keycot+"*"> : cotizacion
-            }
-
-            if iproveedor > 0
-            {
-                if not(field.exist(asignados,ftext("#<keycot>/_detalle"))) { asignados<keycot+"/_detalle*"> : list.create() }
-
-                ref detalle = dbr.rec(db,"SELECT * FROM dcompra WHERE fk_compra_detalle = @icotizacion AND sys_pk = @idetalle",info)
-                do list.add(@@(asignados,ftext("&#<keycot>/_detalle")),detalle)
-            }
-        }
-
-        return asignados
-    }
-
-    cc.generarPedido::&db,&params,&data
-    {
-        ref_cmpreq = dbr.str(db,"SELECT referencia FROM cmpreq WHERE sys_pk = @_entity_id",params)
-
-        ref pedido = lib.record_combine(data,lib.newrec())
-        using pedido
-        {
-            @"documento": @cPedido
-            @"referencia": path.concat(ref_cmpreq,@@(pedido,"$referencia"))
-            @"statusadministrativo": @stt_adm_cerrado
-        }
-
-        do rise_error(0,to.json(pedido))
-
-        @table_name = "compra"
-        @read_query = "select sys_pk AS ipedido FROM #<@table_name> WHERE #<@keyfield> = @_entity_id"
-
-        using @childs
-        {
-            member "_detalle"
-            {
-                @"joinfield": "fk_compra_detalle"
-                @"keyfield": "sys_pk"
-                @"table": "dcompra"
-                @"select_query": "SELECT sys_pk AS idetalle, iproducto FROM dcompra WHERE fk_compra_detalle = @ipedido"
-                @"fields": "cantidad,costototal,descuento1,descuento2,factor,impuesto1,impuesto2,impuesto3,impuesto4,notas,precio,status,tipocambio,unidad,xfacturar,documento,doc_partida,iproducto"
-            }
-        }
-    }
-
-    cc.read::&db,&params
-    {
-        new data {}
-        do prepareView(db,params,data)
-        return data
-    }
-
-    cc.pedir::&db,&params,&data
-    {
-        @use_transaction = @false
-        
-        ref asignados = cc.obtenerCotizacionesDeAsignados(db,data)
-
-        do dbr.begin(db)
-
-        ref list = list.create_from_fields(asignados)
-        for i = 0; i < list.count(list)
-        {
-            keycot = list.str(list,i)
-            ref cot = field.obj(asignados,keycot)
-
-            do cc.generarPedido(db,params,cot)
-        }
-
-        do dbr.commit(db)
-
-        exception
-        {
-            do errordet(@false)
-            if dbr.in_transaction(db) { do dbr.rollback(db) }
-
-            ref FormData = record.copy(data,"*")
-            code = last_error_code()
-            error = last_error()
-
-            do record.clear(data)
-            data<"form*"> : FormData
-
             do prepareView(db,params,data)
-            do rise_error(code,error)
+
+            return data
+        }
+    }
+
+    module "Cuadro comparativo de las solicitudes de una requisición (cc.dk):cc"
+    {
+        obtenerCotizacionesDeAsignados::&db,&data
+        {
+            ref list = list.create_from_fields(data)
+            ref asignados = record.create()
+
+            for i = 0; i < list.count(list)
+            {
+                row = list.str(list,i)
+                val = field.str(data,row)
+                ref part = split(val,";")
+
+                iproveedor = list.num(part,0)
+                icotizacion = list.num(part,1)
+                idetalle = list.num(part,2)
+                iproducto = list.num(part,3)
+                
+                new info
+                {
+                    @"iproveedor": iproveedor
+                    @"icotizacion": icotizacion
+                    @"idetalle": idetalle
+                    @"iproducto": iproducto
+                }
+
+                keycot = "C" + str(icotizacion)
+
+                if iproveedor > 0 && not(field.exist(asignados,keycot))
+                {
+                    ref cotizacion = dbr.rec(db,"SELECT * FROM compra WHERE sys_pk = @icotizacion",info)
+                    asignados<keycot+"*"> : cotizacion
+                }
+
+                if iproveedor > 0
+                {
+                    if not(field.exist(asignados,ftext("#<keycot>/_detalle"))) { asignados<keycot+"/_detalle*"> : list.create() }
+
+                    ref detalle = dbr.rec(db,"SELECT * FROM dcompra WHERE fk_compra_detalle = @icotizacion AND sys_pk = @idetalle",info)
+                    do list.add(@@(asignados,ftext("&#<keycot>/_detalle")),detalle)
+                }
+            }
+
+            return asignados
+        }
+
+        generarPedido::&db,&params,&data
+        {
+            cmpreq_id = @@(params,"$_entity_id")
+            ref_cmpreq = dbr.str(db,"SELECT referencia FROM cmpreq WHERE sys_pk = @_entity_id",params)
+
+            using data
+            {
+                @"documento": @cPedido
+                @"referencia": path.concat(ref_cmpreq,@@(data,"$referencia"))
+                @"statusadministrativo": @stt_adm_cerrado
+            }
+
+            @table_name = "compra"
+            @create_exclude_fields = @sys_fields
+            @read_query = "select sys_pk AS ipedido FROM #<@table_name> WHERE #<@keyfield> = @_entity_id"
+
+            using @childs
+            {
+                member "_detalle"
+                {
+                    @"joinfield": "fk_compra_detalle"
+                    @"keyfield": "sys_pk"
+                    @"table": "dcompra"
+                    @"select_query": "SELECT sys_pk AS idetalle, iproducto FROM dcompra WHERE fk_compra_detalle = @ipedido"
+                    @"fields": "cantidad,costototal,descuento1,descuento2,factor,impuesto1,impuesto2,impuesto3,impuesto4,notas,precio,status,tipocambio,unidad,xfacturar,documento,doc_partida,iproducto"
+                }
+            }
+            
+            do entity.create(db,params,data)
+            ref pedido = entity.read(db,params)
+
+            @table_name = "solcot"
+            @create_exclude_fields = ""
+            @read_query = ftext(@qry_solcot)
+            params<"_entity_id"> : cmpreq_id
+
+            return pedido
+        }
+
+        asignarPedido::&db,&params,&data
+        {
+            sql_asignar = "
+            UPDATE cmpreq AS con
+                RIGHT JOIN cmpreq AS req ON req.en = con.sys_pk
+                INNER JOIN dcmpreq AS dtl ON dtl.ref_req = req.sys_pk
+            SET dtl.pedido = @idetalle
+            WHERE (con.sys_pk = #<cmpreq_id> OR req.sys_pk = #<cmpreq_id>)
+                AND dtl.producto = @iproducto
+            "
+
+            ref detalle = ifnull(@@(data,"&_detalle"),list.create())
+            cmpreq_id = @@(params,"$_entity_id")
+            
+            for i = 0; i < list.count(detalle)
+            {
+                ref obj = list.obj(detalle,i)
+                do dbr.execute(db,ftext(sql_asignar),obj)
+            }
+        }
+
+        cc.read::&db,&params
+        {
+            new data
+            {
+                @"entity*": dbr.rec(db,ftext(@qry_cmpreq),params)
+            }
+            do prepareView(db,params,data)
+            
+            return data
+        }
+
+        cc.pedir::&db,&params,&data
+        {
+            @use_transaction = @false
+            
+            ref asignados = cc.obtenerCotizacionesDeAsignados(db,data)
+
+            do dbr.begin(db)
+
+            ref list = list.create_from_fields(asignados)
+            for i = 0; i < list.count(list)
+            {
+                keycot = list.str(list,i)
+                ref cotizacion = field.obj(asignados,keycot)
+
+                ref pedido = cc.generarPedido(db,params,cotizacion)
+                do cc.asignarPedido(db,params,pedido)
+            }
+
+            do dbr.commit(db)
+
+            exception
+            {
+                do errordet(@false)
+                if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+                ref FormData = record.copy(data,"*")
+                code = last_error_code()
+                error = last_error()
+
+                do record.clear(data)
+                data<"form*"> : FormData
+
+                do prepareView(db,params,data)
+                do rise_error(code,error)
+            }
         }
     }
 

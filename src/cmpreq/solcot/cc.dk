@@ -25,9 +25,10 @@ module "form.dk"
 
     function searchProducto(&list,iproducto)
     {
-        for i = 0; i < list.count(list)
+        ref detalle = ifnull(list,list.create())
+        for i = 0; i < list.count(detalle)
         {
-            ref obj = list.obj(list,i)
+            ref obj = list.obj(detalle,i)
             if @@(obj,"#iproducto") == iproducto { return obj }
         }
         return record.create()
@@ -101,7 +102,7 @@ module "form.dk"
                         {
                             tr
                             {
-                                th(class="text-center" colspan="7"){$"Referencia"}
+                                th(class="text-center" colspan="7"){$"#<@@(entity,'$referencia')>"}
                                 #!
                                 for i = 0; i < cots_length
                                 {
@@ -141,7 +142,9 @@ module "form.dk"
                             for i = 0; i < prod_length
                             {
                                 ref prod = list.obj(productos,i)
-                                iproducto = @@(prod,"#iproducto")
+                                iproducto = @@(prod,"#sys_pk")
+                                unidad_ref = toupper(@@(prod,"$unidad"))
+                                cantidad_ref = @@(prod,"#cantidad")
                                 precio_ref = @@(prod,"#precio")
                                 precio_min = precio_ref
                                 row = (i+1)
@@ -178,11 +181,15 @@ module "form.dk"
                                         iproveedor = @@(cot,"#iproveedor")
                                         icotizacion = @@(cot,"icotizacion")
                                         idetalle = @@(pp,"#idetalle")
+                                        unidad_cot = toupper(@@(pp,"$unidad"))
+                                        cantidad_cot = @@(pp,"#cantidad")
                                         precio_cot = @@(pp,"#precio")
                                         pdr = (j+1)
                                         check = ""
-                                        cls_cell = ""
-                                        cls_input = ""
+                                        disabled = ""
+                                        cell_msg = ""
+                                        cell_cls = ""
+                                        input_cls = ""
 
                                         if field.exist(@("&."),"form")
                                         {
@@ -190,27 +197,40 @@ module "form.dk"
                                             ref part = split(value,";")
                                             check = ifstr(list.num(part,0) == iproveedor, "checked", "")
                                         }
-                                        else if check == "" && precio_cot < precio_min
+                                        
+                                        if precio_cot <= 0
+                                        {
+                                            disabled = "disabled"
+                                            cell_msg = "No cotizado"
+                                            cell_cls = "text-muted text-decoration-line-through"
+                                        }
+                                        else if unidad_cot != unidad_ref || cantidad_cot != cantidad_ref
+                                        {
+                                            disabled = "disabled"
+                                            cell_msg = "Descalificado"
+                                            cell_cls = "bg-warning"
+                                        }
+                                        else if precio_cot < precio_min
                                         {
                                             precio_min = precio_cot
                                             check = "checked"
                                         }
 
-                                        if precio_cot <= precio_min && precio_cot != precio_ref
+                                        if precio_cot > 0 && precio_cot <= precio_min && precio_cot != precio_ref && unidad_cot == unidad_ref && cantidad_cot == cantidad_ref
                                         {
-                                            cls_cell = "bg-success text-white fw-500"
-                                            cls_input = "bg-transparent text-white fw-500"
+                                            cell_cls = "bg-success text-white fw-500"
+                                            input_cls = "bg-transparent text-white fw-500"
                                         }
 
                                         #$
-                                        td(class="text-center border-start")
+                                        td(class="text-center border-start" title="#<cell_msg>")
                                         {
-                                            input(class="form-check-input" type="radio" name="#<row>" value="#<iproveedor>;#<icotizacion>;#<idetalle>;#<iproducto>" id="rd_#<row>_#<pdr>" onclick="cc.asignar()" "data-icot"="#<icotizacion>" "data-idet"="#<idetalle>" "#<check>"="")
+                                            input(class="form-check-input" type="radio" name="#<row>" value="#<iproveedor>;#<icotizacion>;#<idetalle>;#<iproducto>" id="rd_#<row>_#<pdr>" onclick="cc.asignar()" "data-icot"="#<icotizacion>" "data-idet"="#<idetalle>" "#<check>"="" "#<disabled>"="")
                                         }
-                                        td(class="text-end #<cls_cell>" id="td_pu_#<row>_#<pdr>" "data-value"="#<@@(pp,'#precio')>"){$"#<@@(pp,'#precio')>"}
-                                        td(class="text-end #<cls_cell>" id="td_dto_#<row>_#<pdr>" "data-value"="#<@@(pp,'#descuentos')>"){$"#<@@(pp,'#descuentos')>"}
-                                        td(class="text-end #<cls_cell>" id="td_imp_#<row>_#<pdr>" "data-value"="#<@@(pp,'#impuestos')>"){$"#<@@(pp,'#impuestos')>"}
-                                        td(class="text-end #<cls_cell>" id="td_ttl_#<row>_#<pdr>" "data-value"="#<@@(pp,'#importe')>"){$"#<@@(pp,'#importe')>"}
+                                        td(class="text-end #<cell_cls>" id="td_pu_#<row>_#<pdr>" "data-value"="#<@@(pp,'#precio')>" title="#<cell_msg>"){$"#<@@(pp,'#precio')>"}
+                                        td(class="text-end #<cell_cls>" id="td_dto_#<row>_#<pdr>" "data-value"="#<@@(pp,'#descuentos')>" title="#<cell_msg>"){$"#<@@(pp,'#descuentos')>"}
+                                        td(class="text-end #<cell_cls>" id="td_imp_#<row>_#<pdr>" "data-value"="#<@@(pp,'#impuestos')>" title="#<cell_msg>"){$"#<@@(pp,'#impuestos')>"}
+                                        td(class="text-end #<cell_cls>" id="td_ttl_#<row>_#<pdr>" "data-value"="#<@@(pp,'#importe')>" title="#<cell_msg>"){$"#<@@(pp,'#importe')>"}
                                     }
                                     #$
                                 }
@@ -221,7 +241,7 @@ module "form.dk"
                         {
                             tr
                             {
-                                td(class="text-end fw-bolder" colspan="7"){$"Total cotizado:"}
+                                td(class="text-end fw-bolder" colspan="7"){$"Total pedido:"}
                                 #!
                                 for i = 0; i < cots_length
                                 {
@@ -231,7 +251,7 @@ module "form.dk"
                             }
                             tr
                             {
-                                td(class="text-end fw-bolder" colspan="7"){$"Total pedido:"}
+                                td(class="text-end fw-bolder" colspan="7"){$"Total:"}
                                 td(class="text-start fw-bolder" colspan="#<(5 * cots_length)>" id="td_ttl_pedido"){$""}
                             }
                         }

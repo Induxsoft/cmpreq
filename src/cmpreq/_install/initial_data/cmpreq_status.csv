@@ -4,4 +4,5 @@ id,const
 10,Aprobado
 20,"En proceso"
 30,Completado
+31,Incompleto
 99,Cancelado
