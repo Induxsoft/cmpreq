@@ -43,6 +43,10 @@ module ""
         IFNULL(pda.partida,'') AS partida_pre,
         IFNULL(pto.ejercicio,'') AS ejercicio,
         IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
+        IFNULL(pda.sys_pk,'') AS ipartida,
+        IFNULL(pto.sys_pk,'') AS ipresupuesto,
+        IFNULL(uni.sys_pk,'') AS iunidad,
+        IFNULL(pda.id,'') AS partida_id,
         CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
         stt.const AS cstatus,
         dvs.codigo AS cdivisa

@@ -220,6 +220,10 @@ module ""
 
     req.changeStatus::&db,&params,&data
     {
+        do errordet(@false)
+        
+        new_status = @@(data,"#status")
+
         new cmpreq
         {
             @"sys_pk": @@(data,"#sys_pk")
@@ -227,10 +231,42 @@ module ""
             @"sys_lastuser": @@(@http_context, "$session/user/uid")
             @"sys_recver": @@(data,"#sys_recver")
 
-            @"status": @@(data,"#status")
+            @"status": new_status
         }
 
-        if @@(data,"#status") == @stt_aprobado { cmpreq<"uaprobo"> : lib.getPkUsr(db, @@(@http_context, "$session/user/uid")) }
+        if new_status == @stt_aprobado
+        {
+            ref req = entity.read(db,params)
+            
+            if @@(req,"$tipo") == "D"
+            {
+                if dbr.num(db,"SELECT status FROM gop_presupuesto WHERE sys_pk = @ipresupuesto",req) < 3
+                { do rise_error(500,"¡No es posible aprobar la requisición!\r\nEs necesario aprobar el presupuesto de la partida presupuestal.") }
+
+                if dbr.num(db,"SELECT COUNT(sys_pk) FROM gop_partida WHERE padre = @ipartida",req) > 0
+                { do rise_error(500,"No se puede afectar la requisición porque la partida presupuestal tiene sub-partidas, relacione la requisción a la sub-partida correspondiente") }
+
+                ref pre = pregop.partida.importes(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"))
+
+                if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto.") }
+                
+                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), @@(req,"#importe")))
+                { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
+            }
+
+            cmpreq<"uaprobo"> : lib.getPkUsr(db, @@(@http_context, "$session/user/uid"))
+        }
+
+        if new_status == @stt_cancelado
+        {
+            ref req = entity.read(db,params)
+            
+            if @@(req,"$tipo") == "D"
+            {
+                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
+            }
+        }
 
         ref entity = dbr.save(db,"cmpreq",cmpreq)
 

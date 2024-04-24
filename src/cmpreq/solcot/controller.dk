@@ -40,6 +40,7 @@ module ""
             @form_view = "cc.dk"
             
             point @read to cc.read
+            point @create to cc.pedir
             point @update to cc.pedir
             break
         }

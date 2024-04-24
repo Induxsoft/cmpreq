@@ -137,14 +137,16 @@ var solcot =
         if (!doc) return;
         if (!this.url_add_cotizacion) return;
 
+        // const frmreq = new FormData(document.getElementById("form-cmpreq"));
         let curr_row = this.table.CurrentRowIndex();
         let curr_obj = this.table.DataArray[curr_row];
 
+        let endpoint = this.url_add_cotizacion.replace("{isol}",curr_obj.sys_pk);
         let fd = new FormData();
         fd.append("sys_pk",curr_obj.sys_pk);
         fd.append("sys_recver",curr_obj.sys_recver);
         fd.append("cotizacion",doc.sys_pk);
-        let endpoint = this.url_add_cotizacion.replace("{isol}",curr_obj.sys_pk);
+        fd.append("cmpreq_id",curr_obj.req);
 
         const onSuccess = (data) =>
         {
@@ -158,6 +160,7 @@ var solcot =
             curr_obj["cotizacion"] = data.cotizacion;
             curr_obj["fcotizacion"] = data.fcotizacion;
             curr_obj["ttl_cot"] = data.ttl_cot;
+            curr_obj["completa"] = data.completa;
             
             this.table.UpdateRow(curr_row);
         }
@@ -194,6 +197,7 @@ var solcot =
             curr_obj["cotizacion"] = "";
             curr_obj["fcotizacion"] = "";
             curr_obj["ttl_cot"] = 0;
+            curr_obj["completa"] = "No";
             
             this.table.UpdateRow(curr_row);
         }
@@ -289,7 +293,8 @@ var solcot =
         let patchdata =
         {
             sys_pk: curr_obj.sys_pk,
-            sys_recver: curr_obj.sys_recver
+            sys_recver: curr_obj.sys_recver,
+            motivo: ""
         }
 
         const onSuccess = (data) =>

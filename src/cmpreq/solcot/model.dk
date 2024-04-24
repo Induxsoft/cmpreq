@@ -104,9 +104,14 @@ module ""
         SELECT
             pdr.sys_pk AS iproveedor,
             pdr.nombre AS `proveedor`,
-            cotizacion AS icotizacion
+            cot.sys_pk AS icotizacion,
+            ROUND(IFNULL(cot.subtotal,0),4) AS subtotal,
+            ROUND(IFNULL(cot.descuento1,0) + IFNULL(cot.descuento2,0),4) AS descuentos,
+            ROUND(IFNULL(cot.impuesto1,0) + IFNULL(cot.impuesto2,0) + IFNULL(cot.impuesto3,0) + IFNULL(cot.impuesto4,0),4) AS impuestos,
+            ROUND((((((IFNULL(cot.subtotal,0) - IFNULL(cot.descuento1,0)) - IFNULL(cot.descuento2,0)) + IFNULL(cot.impuesto1,0)) + IFNULL(cot.impuesto2,0)) + IFNULL(cot.impuesto3,0)) + IFNULL(cot.impuesto4,0),4) AS total
         FROM solcot AS sol
             INNER JOIN proveedor AS pdr ON pdr.sys_pk = sol.`proveedor`
+            INNER JOIN compra AS cot ON cot.sys_pk = sol.cotizacion
         WHERE NOT IFNULL(sol.sys_deleted,0)
             AND NOT IFNULL(sol.cancelada,0)
             AND sol.cotizacion IS NOT NULL
@@ -243,6 +248,8 @@ module ""
 
                 keycot = "C" + str(icotizacion)
 
+                if iproveedor == 0 { @cmpreq_status = @stt_incompleto }
+
                 if iproveedor > 0 && not(field.exist(asignados,keycot))
                 {
                     ref cotizacion = dbr.rec(db,"SELECT * FROM compra WHERE sys_pk = @icotizacion",info)
@@ -321,7 +328,7 @@ module ""
             }
         }
 
-        cc.read::&db,&params
+        read::&db,&params
         {
             new data
             {
@@ -332,9 +339,10 @@ module ""
             return data
         }
 
-        cc.pedir::&db,&params,&data
+        pedir::&db,&params,&data
         {
             @use_transaction = @false
+            @cmpreq_status = @stt_completado
             
             ref asignados = cc.obtenerCotizacionesDeAsignados(db,data)
 
@@ -349,6 +357,55 @@ module ""
                 ref pedido = cc.generarPedido(db,params,cotizacion)
                 do cc.asignarPedido(db,params,pedido)
             }
+
+            ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
+
+            if @@(req,"$tipo") == "D"
+            {
+                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente.") }
+
+                sql_total_pedido = "
+                SELECT
+                    IFNULL(SUM(ROUND((((((((IFNULL(c.costototal,0) * IFNULL(c.cantidad,0)) - IFNULL(c.descuento1,0)) - IFNULL(c.descuento2,0)) + IFNULL(c.impuesto1,0)) + IFNULL(c.impuesto2,0)) + IFNULL(c.impuesto3,0)) + IFNULL(c.impuesto4,0)),4)),0) AS total
+                FROM cmpreq AS req
+                    INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
+                    INNER JOIN dcompra AS c ON d.pedido = c.sys_pk
+                WHERE req.sys_pk = @_entity_id
+                "
+                total_pedido = dbr.num(db,sql_total_pedido,params)
+
+                if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
+                { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+            }
+
+            if @@(req,"$tipo") == "C"
+            {
+                ref list_reqs = dbr.list(db,"SELECT sys_pk AS _entity_id FROM cmpreq WHERE en = @_entity_id",params)
+                for i = 0; i < list.count(list_reqs)
+                {
+                    ref itm = list.obj(list_reqs,i)
+                    ref req = dbr.rec(db,ftext(@qry_cmpreq),itm)
+
+                    if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                    { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+
+                    sql_total_pedido = "
+                    SELECT
+                        IFNULL(SUM(ROUND((((((((IFNULL(c.costototal,0) * IFNULL(c.cantidad,0)) - IFNULL(c.descuento1,0)) - IFNULL(c.descuento2,0)) + IFNULL(c.impuesto1,0)) + IFNULL(c.impuesto2,0)) + IFNULL(c.impuesto3,0)) + IFNULL(c.impuesto4,0)),4)),0) AS total
+                    FROM cmpreq AS req
+                        INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
+                        INNER JOIN dcompra AS c ON d.pedido = c.sys_pk
+                    WHERE req.sys_pk = @_entity_id
+                    "
+                    total_pedido = dbr.num(db,sql_total_pedido,itm)
+
+                    if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
+                    { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+                }
+            }
+
+            do dbr.execute(db,ftext("UPDATE cmpreq SET status = #<@cmpreq_status> WHERE sys_pk = @_entity_id"),params)
 
             do dbr.commit(db)
 
@@ -378,7 +435,23 @@ module ""
             @"sys_timestamp*": now()
             @"sys_recver": @@(data,"#sys_recver")
             @"cotizacion": @@(data,"#cotizacion")
+            @"completa": @true
         }
+
+        sql_productos_cotizados = "SELECT GROUP_CONCAT(DISTINCT d.iproducto SEPARATOR ',') AS p_cotizados FROM dcompra AS d WHERE d.fk_compra_detalle = @cotizacion;"
+        sql_productos_faltantes = "
+        SELECT COUNT(d.`producto`) AS p_faltantes
+        FROM cmpreq AS con
+            RIGHT JOIN cmpreq AS req ON req.en = con.sys_pk
+            INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
+        WHERE (con.sys_pk = @cmpreq_id OR req.sys_pk = @cmpreq_id)
+            AND d.`producto` NOT IN (#<p_cotizados>)
+        "
+
+        p_cotizados = dbr.str(db,sql_productos_cotizados,data)
+        p_faltantes = dbr.num(db,ftext(sql_productos_faltantes),data)
+
+        if p_faltantes > 0 { solcot<"completa"> : @false }
 
         ref entity = entity.update(db,params,solcot)
         return entity
@@ -386,7 +459,7 @@ module ""
 
     sol.removerCotizacion::&db,&params,&data
     {
-        do dbr.execute(db,"UPDATE solcot SET cotizacion = NULL WHERE sys_pk = @_entity_id",params)
+        do dbr.execute(db,"UPDATE solcot SET cotizacion = NULL, completa = FALSE WHERE sys_pk = @_entity_id",params)
         return entity.read(db,params)
     }
 
@@ -398,6 +471,8 @@ module ""
             @"sys_timestamp*": now()
             @"sys_recver": @@(data,"#sys_recver")
             @"cancelada": @true
+            @"motivo": trim(@@(data,"$motivo"))
+            @"ucancelo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
         ref entity = entity.update(db,params,solcot)

@@ -756,26 +756,34 @@ model "erp.requisiciones"
         @"impuestos" decimal(12,4) required
         @"excluido" bool
         @"notas" memo
-        @"pedido" ref:"dcompra" //Fila (partida) del pedido de esta partida (lote) de la requisición
+        @"pedido" ref:"dcompra" // Fila (partida) del pedido de esta partida (lote) de la requisición
     }
+    
+    // Relacion entre filas de detalle de requisiciones directas y requisiciones consolidadas
+    entity "cmpreqdcon": "TableModel"
+    {
+        @"ref_req" ref:"cmpreq" required // Consolidada (requisicion)
+        @"ref_dcmpreq" ref: "dcmpreq" required // Fila de la requisicion directa que se considero antes de hacer el pedido (este desierta o no)
+    }
+
     //Solicitud de cotización a proveedor
     entity "solcot": "TableModel"
     {
         @"referencia" string(32) unique required
         @"folio" ref:"foliosdocumentos" unique required
         @"proveedor" ref:"proveedor" required
-        @"fenvio" date //fecha oficial en que fue enviada al proveedor
-        @"redaccion" memo //Texto libre (generalmente de una variable de configuración)
+        @"fenvio" date // fecha oficial en que fue enviada al proveedor
+        @"redaccion" memo // Texto libre (generalmente de una variable de configuración)
         @"notas" memo
-        @"req" ref:"cmpreq" required //Requisición de origen
-        @"fresp" datetime //fecha y hora en que se recibió la cotización
+        @"req" ref:"cmpreq" required // Requisición de origen
+        @"fresp" datetime // fecha y hora en que se recibió la cotización
         @"cotizacion" ref:"compra"
-        @"completa" bool //Es true si la cotización del proveedor cubre todos los elementos solicitados
+        @"completa" bool // Es true si la cotización del proveedor cubre todos los elementos solicitados
         @"cancelada" bool // true indica que se ha decidido considerar cancelada la solicitud
-        @"motivo" memo //Motivo de la cancelación
-        @"ucreo" ref:"tuser" required //usuario que creó la solicitud de cotización
+        @"motivo" memo // Motivo de la cancelación
+        @"ucreo" ref:"tuser" required // usuario que creó la solicitud de cotización
         @"urecibio" ref:"tuser" // usuario que recibió (vinculó) la cotización
-        @"ucancelo" ref:"tuser" //usuario que canceló la solicitud de cotización
+        @"ucancelo" ref:"tuser" // usuario que canceló la solicitud de cotización
     }
 
     //* ======================================== [ ... ]

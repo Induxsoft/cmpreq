@@ -20,6 +20,7 @@ module
 	@stt_aprobado = 10
 	@stt_nproceso = 20
 	@stt_completado = 30
+	@stt_incompleto = 31
 	@stt_cancelado = 99
 	// cstatusadministrativos
 	@stt_adm_na = 0

@@ -39,7 +39,7 @@ module "form.dk"
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
 
         #$
-        button(class="#<btn_cls>" type="submit" id="btn_submit"){$"Generar pedidos"}
+        button(class="#<btn_cls>" type="button" id="btn_submit"){$"Generar pedidos"}
         #!
     }
 
@@ -86,7 +86,7 @@ module "form.dk"
 
         div(id="work_area" class="container-section")
         {
-            form(method="POST" action="./" id="frm_cc")
+            form(method="POST" action="./" id="frm-cc")
             {
                 #!
                 do uie.printV12FormBar(nav_config)
@@ -94,13 +94,20 @@ module "form.dk"
 
                 div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')> overflow-auto"){$"#<@('$error/message')>"}
 
+                div(class="d-flex gap-2 mb-1")
+                {
+                    small(class="badge bg-success text-wrap"){$"Precio más bajo"}
+                    small(class="badge bg-warning text-wrap text-dark" title="La unidad o cantidad no coincide con la solicitada"){$"Descalificado"}
+                    small(class="badge bg-light text-wrap text-dark text-decoration-line-through"){$"No cotizado"}
+                }
+
                 div(class="" style="display:blobk; position:relative; overflow-x:auto;")
                 {
-                    table(class="table table-sm border mb-0" id="tbl_cc" style="width:auto; min-width:100%; max-height:90vh;")
+                    table(class="table table-sm table-striped mb-0" id="tbl_cc" style="width:auto; min-width:100%; max-height:90vh;")
                     {
                         thead
                         {
-                            tr
+                            tr(class="bg-light-gray")
                             {
                                 th(class="text-center" colspan="7"){$"#<@@(entity,'$referencia')>"}
                                 #!
@@ -113,7 +120,7 @@ module "form.dk"
                                 }
                                 #$
                             }
-                            tr
+                            tr(class="bg-light-gray")
                             {
                                 th{$""}
                                 th(class="text-center"){$"Descripción"}
@@ -213,7 +220,7 @@ module "form.dk"
                                         else if precio_cot < precio_min
                                         {
                                             precio_min = precio_cot
-                                            check = "checked"
+                                            if not(field.exist(@("&."),"form")){ check = "checked" }
                                         }
 
                                         if precio_cot > 0 && precio_cot <= precio_min && precio_cot != precio_ref && unidad_cot == unidad_ref && cantidad_cot == cantidad_ref
@@ -241,18 +248,84 @@ module "form.dk"
                         {
                             tr
                             {
-                                td(class="text-end fw-bolder" colspan="7"){$"Total pedido:"}
+                                td(class="border-white" colspan="7"){$""}
                                 #!
                                 for i = 0; i < cots_length
                                 {
-                                    #$ td(class="text-end fw-bolder" colspan="5" id="td_ttl_#<(i+1)>"){$"&nbsp;"}
+                                    ref cot = list.obj(cotizaciones,i)
+                                    #$
+                                    td(class="text-end fw-bolder bg-light-gray" colspan="3"){$"Subtotal:"}
+                                    td(class="text-end border" colspan="2"){$"#<@@(cot,'#subtotal')>"}
+                                    #!
                                 }
                                 #$
                             }
                             tr
                             {
-                                td(class="text-end fw-bolder" colspan="7"){$"Total:"}
-                                td(class="text-start fw-bolder" colspan="#<(5 * cots_length)>" id="td_ttl_pedido"){$""}
+                                td(class="border-white" colspan="7"){$""}
+                                #!
+                                for i = 0; i < cots_length
+                                {
+                                    ref cot = list.obj(cotizaciones,i)
+                                    #$
+                                    td(class="text-end fw-bolder bg-light-gray" colspan="3"){$"- Descuentos:"}
+                                    td(class="text-end border" colspan="2"){$"#<@@(cot,'#descuentos')>"}
+                                    #!
+                                }
+                                #$
+                            }
+                            tr
+                            {
+                                td(class="border-white" colspan="7"){$""}
+                                #!
+                                for i = 0; i < cots_length
+                                {
+                                    ref cot = list.obj(cotizaciones,i)
+                                    #$
+                                    td(class="text-end fw-bolder bg-light-gray" colspan="3"){$"+ Impuestos:"}
+                                    td(class="text-end border" colspan="2"){$"#<@@(cot,'#impuestos')>"}
+                                    #!
+                                }
+                                #$
+                            }
+                            tr
+                            {
+                                td(class="border-white" colspan="7"){$""}
+                                #!
+                                for i = 0; i < cots_length
+                                {
+                                    ref cot = list.obj(cotizaciones,i)
+                                    #$
+                                    td(class="text-end fw-bolder bg-light-gray" colspan="3"){$"Total:"}
+                                    td(class="text-end border" colspan="2"){$"#<@@(cot,'#total')>"}
+                                    #!
+                                }
+                                #$
+                            }
+
+                            // tr(class="border-white"){td(colspan="#<(7 + (5 * cots_length))>"){$"&nbsp;"}}
+
+                            tr
+                            {
+                                td(class="border-white" colspan="5"){$""}
+                                td(class="text-end fw-bolder bg-light-gray" colspan="2"){$"Total pedido:"}
+                                #!
+                                for i = 0; i < cots_length
+                                {
+                                    #$ td(class="text-end fw-bolder border" colspan="5" id="td_ttl_#<(i+1)>"){$"&nbsp;"}
+                                }
+                                #$
+                            }
+                            tr
+                            {
+                                td(class="border-white" colspan="5"){$""}
+                                td(class="text-end fw-bolder bg-light-gray" colspan="2"){$"Total:"}
+                                #!
+                                if cots_length > 0
+                                {
+                                    #$ td(class="text-start fw-bolder" colspan="#<(5 * cots_length)>" id="td_ttl_pedido"){$"&nbsp;"}
+                                }
+                                #$
                             }
                         }
                     }
@@ -269,6 +342,7 @@ module "form.dk"
                 cc.url_exit = "#<url_exit>";
                 cc.prod_length = #<prod_length>;
                 cc.cots_length = #<cots_length>;
+                cc.formId = "frm-cc"
                 cc.init();
             });
 		'}
