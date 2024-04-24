@@ -760,11 +760,11 @@ model "erp.requisiciones"
     }
     
     // Relacion entre filas de detalle de requisiciones directas y requisiciones consolidadas
-    entity "cmpreqdcon": "TableModel"
-    {
-        @"ref_req" ref:"cmpreq" required // Consolidada (requisicion)
-        @"ref_dcmpreq" ref: "dcmpreq" required // Fila de la requisicion directa que se considero antes de hacer el pedido (este desierta o no)
-    }
+    // entity "cmpreqdcon": "TableModel"
+    // {
+    //     @"ref_req" ref:"cmpreq" required // Consolidada (requisicion)
+    //     @"ref_dcmpreq" ref: "dcmpreq" required // Fila de la requisicion directa que se considero antes de hacer el pedido (este desierta o no)
+    // }
 
     //Solicitud de cotización a proveedor
     entity "solcot": "TableModel"

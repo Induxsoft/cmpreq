@@ -40,6 +40,7 @@ module ""
         req.`status`,
         IFNULL(req.notas,'') AS notas,
         IF(req.consolidacion,'C','D') AS tipo,
+        IFNULL(req.en,0) AS en,
         IFNULL(pda.partida,'') AS partida_pre,
         IFNULL(pto.ejercicio,'') AS ejercicio,
         IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,

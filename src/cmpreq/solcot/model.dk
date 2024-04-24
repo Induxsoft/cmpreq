@@ -328,6 +328,50 @@ module ""
             }
         }
 
+        afectarPresupuestos::&db,cmpreqId
+        {
+            new params { @"_entity_id": cmpreqId }
+            ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
+
+            sql_total_pedido = "
+            SELECT
+                IFNULL(SUM(ROUND((((((((IFNULL(c.costototal,0) * IFNULL(c.cantidad,0)) - IFNULL(c.descuento1,0)) - IFNULL(c.descuento2,0)) + IFNULL(c.impuesto1,0)) + IFNULL(c.impuesto2,0)) + IFNULL(c.impuesto3,0)) + IFNULL(c.impuesto4,0)),4)),0) AS total
+            FROM cmpreq AS req
+                INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
+                INNER JOIN dcompra AS c ON d.pedido = c.sys_pk
+            WHERE req.sys_pk = @_entity_id
+            "
+
+            if @@(req,"$tipo") == "D"
+            {
+                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                { do rise_error(500,"Hubo un problema al afectar el comprometido del ejercicio correspondiente.") }
+
+                total_pedido = dbr.num(db,sql_total_pedido,params)
+
+                if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
+                { do rise_error(500,"Hubo un problema al afectar el ejercido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+            }
+
+            if @@(req,"$tipo") == "C"
+            {
+                ref list_reqs = dbr.list(db,"SELECT sys_pk AS _entity_id FROM cmpreq WHERE en = @_entity_id",params)
+                for i = 0; i < list.count(list_reqs)
+                {
+                    ref itm = list.obj(list_reqs,i)
+                    ref req = dbr.rec(db,ftext(@qry_cmpreq),itm)
+
+                    if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                    { do rise_error(500,"Hubo un problema al afectar el comprometido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+
+                    total_pedido = dbr.num(db,sql_total_pedido,itm)
+
+                    if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
+                    { do rise_error(500,"Hubo un problema al afectar el ejercido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+                }
+            }
+        }
+
         read::&db,&params
         {
             new data
@@ -349,6 +393,7 @@ module ""
             do dbr.begin(db)
 
             ref list = list.create_from_fields(asignados)
+            
             for i = 0; i < list.count(list)
             {
                 keycot = list.str(list,i)
@@ -358,56 +403,19 @@ module ""
                 do cc.asignarPedido(db,params,pedido)
             }
 
-            ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
+            do cc.afectarPresupuestos(db,@@(params,"$_entity_id"))
 
-            if @@(req,"$tipo") == "D"
-            {
-                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
-                { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente.") }
-
-                sql_total_pedido = "
-                SELECT
-                    IFNULL(SUM(ROUND((((((((IFNULL(c.costototal,0) * IFNULL(c.cantidad,0)) - IFNULL(c.descuento1,0)) - IFNULL(c.descuento2,0)) + IFNULL(c.impuesto1,0)) + IFNULL(c.impuesto2,0)) + IFNULL(c.impuesto3,0)) + IFNULL(c.impuesto4,0)),4)),0) AS total
-                FROM cmpreq AS req
-                    INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
-                    INNER JOIN dcompra AS c ON d.pedido = c.sys_pk
-                WHERE req.sys_pk = @_entity_id
-                "
-                total_pedido = dbr.num(db,sql_total_pedido,params)
-
-                if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
-                { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
-            }
-
-            if @@(req,"$tipo") == "C"
-            {
-                ref list_reqs = dbr.list(db,"SELECT sys_pk AS _entity_id FROM cmpreq WHERE en = @_entity_id",params)
-                for i = 0; i < list.count(list_reqs)
-                {
-                    ref itm = list.obj(list_reqs,i)
-                    ref req = dbr.rec(db,ftext(@qry_cmpreq),itm)
-
-                    if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
-                    { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
-
-                    sql_total_pedido = "
-                    SELECT
-                        IFNULL(SUM(ROUND((((((((IFNULL(c.costototal,0) * IFNULL(c.cantidad,0)) - IFNULL(c.descuento1,0)) - IFNULL(c.descuento2,0)) + IFNULL(c.impuesto1,0)) + IFNULL(c.impuesto2,0)) + IFNULL(c.impuesto3,0)) + IFNULL(c.impuesto4,0)),4)),0) AS total
-                    FROM cmpreq AS req
-                        INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
-                        INNER JOIN dcompra AS c ON d.pedido = c.sys_pk
-                    WHERE req.sys_pk = @_entity_id
-                    "
-                    total_pedido = dbr.num(db,sql_total_pedido,itm)
-
-                    if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
-                    { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
-                }
-            }
-
-            do dbr.execute(db,ftext("UPDATE cmpreq SET status = #<@cmpreq_status> WHERE sys_pk = @_entity_id"),params)
+            sql_set_status = "
+            UPDATE cmpreq AS con
+                RIGHT JOIN cmpreq AS req ON req.en = con.sys_pk
+            SET con.`status` = #<@cmpreq_status>, req.`status` = #<@cmpreq_status>
+            WHERE (con.sys_pk = @_entity_id OR req.sys_pk = @_entity_id)
+            "
+            do dbr.execute(db,ftext(sql_set_status),params)
 
             do dbr.commit(db)
+
+            @url_redir = replace(@CMP_IN_PROCESS, "{ireq}", @@(params,"$_entity_id"))
 
             exception
             {

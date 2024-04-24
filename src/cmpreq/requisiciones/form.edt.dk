@@ -25,7 +25,19 @@ module "form.dk"
     @show_btn_cancelar = containsword(@curr_status, "0,1,10,20")
     @enable_editing = (@curr_status == @stt_borrador || @curr_status == @stt_xaprobar)
 
-    if @curr_status == @stt_nproceso {
+    in_consol = (@@(cmpreq,"#en") > 0)
+    
+    if in_consol 
+    {
+        @show_btn_xaprobar = @false
+        @show_btn_aprobar = @false
+        @show_btn_nproceso = @false
+        @show_btn_cancelar = @false
+        @enable_editing = @false
+    }
+
+    // ["En proceso", "Completa", "Incompleta"]
+    if containsword(@curr_status, "20,30,31") && not(in_consol) {
         endpoint = path.concat(@CMP_SOLCOT,@_entity_id)
         endpoint = path.concat(endpoint,"cmp-in-process")
         /* new context
@@ -85,9 +97,7 @@ module "form.dk"
         if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
         if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
         
-        #$
-        button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
-        #!
+        if @enable_editing { #$ button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"} #! }
     }
 
     point general_act to header_act

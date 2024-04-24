@@ -27,7 +27,8 @@ module "form.dk"
 
     empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
 
-    if @curr_status == @stt_nproceso {
+    // ["En proceso", "Completa", "Incompleta"]
+    if containsword(@curr_status, "20,30,31") {
         endpoint = path.concat(@CMP_SOLCOT,@_entity_id)
         endpoint = path.concat(endpoint,"cmp-in-process")
         /* new context
@@ -67,9 +68,7 @@ module "form.dk"
         if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
         if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
         
-        #$
-        button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"}
-        #!
+        if @enable_editing { #$ button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"} #! }
     }
 
     point general_act to header_act

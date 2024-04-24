@@ -220,7 +220,7 @@ module ""
 
     req.changeStatus::&db,&params,&data
     {
-        do errordet(@false)
+        @use_transaction = @false
         
         new_status = @@(data,"#status")
 
@@ -233,6 +233,8 @@ module ""
 
             @"status": new_status
         }
+
+        do dbr.begin(db)
 
         if new_status == @stt_aprobado
         {
@@ -248,7 +250,7 @@ module ""
 
                 ref pre = pregop.partida.importes(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"))
 
-                if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto.") }
+                if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto en el periodo seleccionado.") }
                 
                 if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), @@(req,"#importe")))
                 { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
@@ -264,13 +266,52 @@ module ""
             if @@(req,"$tipo") == "D"
             {
                 if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
-                { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
+                { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente.") }
+            }
+
+            if @@(req,"$tipo") == "C"
+            {
+                ref list_reqs = dbr.list(db,"SELECT sys_pk AS _entity_id FROM cmpreq WHERE en = @_entity_id",params)
+                for i = 0; i < list.count(list_reqs)
+                {
+                    ref itm = list.obj(list_reqs,i)
+                    ref req = entity.read(db,itm)
+
+                    if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                    { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
+                }
+
+                new reg
+                {
+                    @"sys_timestamp*": now()
+                    @"sys_lastuser": @@(@http_context, "$session/user/uid")
+                    @"sys_recver*": dbr.sql("(sys_recver + 1)")
+                    @"status": new_status
+                }
+                do dbr.update(db, "cmpreq", reg, "en = @_entity_id", params)
             }
         }
 
         ref entity = dbr.save(db,"cmpreq",cmpreq)
 
+        do dbr.commit(db)
         return entity
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db) { do dbr.rollback(db) }
+
+            // ref FormData = record.copy(data,"*")
+            code = last_error_code()
+            error = last_error()
+
+            // do record.clear(data)
+            // data<"form*"> : FormData
+
+            // do prepareView(db,params,data)
+            do rise_error(code,error)
+        }
     }
 
     req.list::&db,&params

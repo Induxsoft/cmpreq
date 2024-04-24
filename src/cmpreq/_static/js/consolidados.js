@@ -82,7 +82,7 @@ var consolidados =
             const btn_rem_req = document.getElementById("btn-rem-req");
             const ik_requisicion = document.getElementById("ik_requisicion");
 
-            btn_submit.addEventListener("click", () => { this.save() });
+            if (btn_submit) btn_submit.addEventListener("click", () => { this.save() });
             btn_add_req.addEventListener("click", () => { ik_requisicion.searchText("",false) });
             btn_rem_req.addEventListener("click", () => { this.removerRequisicion() });
             ik_requisicion.addEventListener("change", (data) => { this.agregarRequisicion(data) });

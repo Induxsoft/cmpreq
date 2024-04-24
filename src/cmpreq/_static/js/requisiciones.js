@@ -127,7 +127,7 @@ var requisiciones =
             this.form = document.getElementById(this.formId);
             this.table = document.getElementById(this.tableId);
 
-            btn_submit.addEventListener("click", () => { this.save() });
+            if (btn_submit) btn_submit.addEventListener("click", () => { this.save() });
             ik_producto.addEventListener("change",(data) => { this.agregarProducto(data) });
             btn_add_row.addEventListener("click", () => { this.table.AddRow() });
             btn_del_row.addEventListener("click", () => { this.table.DeleteCurrentRow() });
