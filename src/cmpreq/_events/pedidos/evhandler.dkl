@@ -7,37 +7,40 @@ program "Controlador de eventos"
     #include "dbr.dkh"
     
     #include "pregop/pregop.dkh"
+    #include "../../_lib/config.dk"
     #include "../../_lib/list.queries.dk"
 
-    @context.begin(@event_context)
+    do @context.begin(@event_context)
 
     ref db:@("&database")
     ref data:@("&eventdata")
 
-    switch tolower(trim(@("$event")))
+    // do file.wtext("___eventdata.json", to.json(data))
+
+    switch trim(@("$event"))
     {
         case "pos_GA14" // Cancelar documento de compra
         {
-            new params { @"ipedido": @@(data,"#sys_pk") }
+            // Finalizar proceso si el documento no pertenece a un Pedido.
+            if @@(data,"#idocumento") != @cPedido { break }
+            
+            new params 
+            {
+                @"ipedido": @@(data,"#sys_pk")
+            }
 
             cmpreqId = dbr.num(db,"SELECT b.ref_req FROM dcompra a INNER JOIN dcmpreq b ON b.pedido = a.sys_pk WHERE a.fk_compra_detalle = @ipedido LIMIT 1;",params)
+            // Finalizar proceso si el Pedido no se genero por una requisición.
             if cmpreqId <= 0 { break }
             
             params<"_entity_id"> : cmpreqId
-            ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
+            @keyfield = "sys_pk"
 
+            ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
+            // Finalizar proceso si la requisición no es 'Directa'.
             if @@(req,"$tipo") != "D" { break }
 
-            sql_total_pedido = "
-            SELECT IFNULL(SUM(ROUND((((((((IFNULL(c.costototal,0) * IFNULL(c.cantidad,0)) - IFNULL(c.descuento1,0)) - IFNULL(c.descuento2,0)) + IFNULL(c.impuesto1,0)) + IFNULL(c.impuesto2,0)) + IFNULL(c.impuesto3,0)) + IFNULL(c.impuesto4,0)),4)),0) AS total
-            FROM cmpreq AS req
-                INNER JOIN dcmpreq AS d ON d.ref_req = req.sys_pk
-                INNER JOIN dcompra AS c ON d.pedido = c.sys_pk
-            WHERE req.sys_pk = @_entity_id
-            "
-            total_pedido = dbr.num(db,sql_total_pedido,params)
-
-            if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (total_pedido * -1)))
+            if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(data,"#total") * -1)))
             { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
 
             break
@@ -49,5 +52,5 @@ program "Controlador de eventos"
         }
     }
 
-    @context.end()
+    do @context.end()
 }
