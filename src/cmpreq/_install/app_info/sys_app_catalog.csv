@@ -1,3 +1,4 @@
 "pack_id","app_id","app_title","created","app_info"
-"cmpreq","cmpreq.requisiciones","Requisiciones","2024-04-03T23:59:59","Requisiciones"
-"cmpreq","cmpreq.consolidados","Consolidados","2024-04-11T23:59:59","Consolidados"
+"cmpreq","cmpreq.requisiciones","Requisiciones","2024-04-03T23:59:59","Requisiciones de compra"
+"cmpreq","cmpreq.consolidados","Consolidados","2024-04-11T23:59:59","Consolidación de requisiciones de compra"
+"cmpreq","cmpreq.solicitudes","Solicitudes","2024-04-13T23:59:59","Solicitudes de cotización"

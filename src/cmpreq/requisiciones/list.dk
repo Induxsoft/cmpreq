@@ -4,6 +4,8 @@ module "list.dk"
 {
     #include "functions.dkh"
     #include "serialize.dkh"
+    #include "dbr.dkh"
+    #include "dbr.apps.dkl"
     #include "uielements.v12.dkl"
     #include "../_lib/config.dk"
 
@@ -103,23 +105,14 @@ module "list.dk"
         }
     }
 
-    header_act::
-    {
-        #$
-        a(href="#<path.concat(@CMP_REQUISICION,'/_new/')>" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Agregar"}
-        a(href="#<path.concat(@CMP_CONSOLIDADO,'/_new/')>" class="btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"){$"Crear consolidación"}
-        #!
-    }
-
-    point general_act to header_act
-
     new nav_config
     {
         @"title": "Requisiciones"
-        @"buttons*": general_act
+        @"buttons*": @null
         @"urlexit": "/"
-        // @"actions*": dbr.apps.itemactions(@('&database'),"alimento","action","",0)
-        // @"reports*": dbr.apps.itemactions(@('&database'),"alimento","report","",0)
+        @"main": ""
+        @"actions*": dbr.apps.itemactions(@('&database'),"DET070","action","",0)
+        @"reports*": dbr.apps.itemactions(@('&database'),"DET070","report","",0)
         @"jscurrentcontext": "requisiciones.list.getCurrentContext"
     }
 
