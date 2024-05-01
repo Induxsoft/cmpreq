@@ -473,6 +473,11 @@ model "erp.requisiciones"
         @"uf_fechainhabilitacion" datetime
         @"uf_sat_proser" string(50) required
         @"uf_sat_uniproser" string(50) required
+
+        index "producto_sys_info"
+        {
+            field "sys_info"
+        }
     }
     // Catálogo de almacenes
     entity "almacen" : "TableModel"
