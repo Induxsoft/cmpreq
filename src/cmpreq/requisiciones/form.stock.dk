@@ -163,6 +163,34 @@ module "form.dk"
         @"selected": lib.form('fil_depto','nm',cmpreq)
     }
 
+    new fil_prod_below
+    {
+        @"datatable*": from.json('[{"v":"preorden","t":"Punto de re-orden"}, {"v":"minimo","t":"Mínimo"}]')
+        @"id": "fil_prod_below"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0 w-auto"
+            @"name": "fil_prod_below"
+        }
+        @"value_field": "v"
+        @"text_field": "t"
+        @"selected": lib.form('fil_prod_below','tx',cmpreq)
+    }
+
+    new fil_prod_until
+    {
+        @"datatable*": from.json('[{"v":"minimo","t":"Mínimo"}, {"v":"maximo","t":"Máximo"}, {"v":"promedio","t":"Promedio"}]')
+        @"id": "fil_prod_until"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0 w-auto"
+            @"name": "fil_prod_until"
+        }
+        @"value_field": "v"
+        @"text_field": "t"
+        @"selected": lib.form('fil_prod_until','tx',cmpreq)
+    }
+
     new nav_config
     {
         @"title": "Nueva requisición"
@@ -186,9 +214,9 @@ module "form.dk"
 
         div(id="work_area" class="container-section")
         {
-            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
+            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')> overflow-auto"){$"#<@('$error/message')>"}
 
-            form(method="POST" action="./" id="form-new-cmpreq")
+            form(method="POST" action="./?cmpreq_type=#<@type_req_stock>" id="form-new-cmpreq")
             {
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
@@ -300,20 +328,15 @@ module "form.dk"
                             {
                                 div(class="d-inline-flex align-items-center gap-1")
                                 {
-                                    label(class="form-label" "for"="fil_prod_below"){$"Incluir productos iguales o por debajo del:"}
-                                    select(class="form-select form-select-sm rounded-0 w-auto" name="fil_prod_below" id="fil_prod_below")
-                                    {
-                                        option(value="preorden"){$"Punto de re-orden"}
-                                        option(value="minimo"){$"Mínimo"}
-                                    }
+                                    label(class="" "for"="fil_prod_below"){$"Incluir productos iguales o por debajo del:"}
+                                    ##
+                                    do uie.dbSelect(fil_prod_below)
+                                    ##
 
-                                    label(class="form-label" "for"="fil_prod_until"){$"Hasta alcanzar el:"}
-                                    select(class="form-select form-select-sm rounded-0 w-auto" name="fil_prod_until" id="fil_prod_until")
-                                    {
-                                        option(value="minimo"){$"Mínimo"}
-                                        option(value="maximo"){$"Máximo"}
-                                        option(value="promedio"){$"Promedio"}
-                                    }
+                                    label(class="" "for"="fil_prod_until"){$"hasta alcanzar el:"}
+                                    ##
+                                    do uie.dbSelect(fil_prod_until)
+                                    ##
                                 }
                             }
                         }
@@ -334,6 +357,7 @@ module "form.dk"
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
                 requisiciones.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
+                requisiciones.form.url_get_linea = "#<@URL_OBTENER_LINEAS_XCLASE>";
                 requisiciones.form.init();
                 InduxsoftNumberFields.Init();
             });

@@ -128,9 +128,9 @@ module "form.dk"
 
         div(id="work_area" class="container-section")
         {
-            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')>"){$"#<@('$error/message')>"}
+            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')> overflow-auto"){$"#<@('$error/message')>"}
 
-            form(method="POST" action="./" id="form-new-cmpreq")
+            form(method="POST" action="./?cmpreq_type=#<@type_req_gop>" id="form-new-cmpreq")
             {
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")

@@ -126,6 +126,7 @@ module ""
         (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i3compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i3_tasa,
         IFNULL(imp.uf_tipoi4,'') AS i4_txt,
         (CONVERT(REPLACE(SUBSTRING_INDEX(imp.i4compra, '|', @zimpuesto),'%',''), DECIMAL) / 100) AS i4_tasa
+        #<selects>
     FROM producto AS p
         INNER JOIN divisa AS dvs ON dvs.sys_pk = p.idivisa
         INNER JOIN cfgimpuesto AS imp ON imp.sys_pk = p.impuestos

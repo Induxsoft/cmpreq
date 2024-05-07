@@ -84,6 +84,11 @@ module ""
         return data
     }
 
+    obtenerLineaXClase::&db,&params
+    {
+        return dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM linea WHERE NOT IFNULL(sys_deleted,0) AND clase = @iclase",params)
+    }
+
     obtenerUnidad::&db,id
     {
         new params { @"id": id }
@@ -323,9 +328,29 @@ module ""
         }
     }
 
-    req.setStockKeeping::&db,&params,&data
+    req.getStockKeepingProducts::&db,&params
     {
         do setZonaImpuesto(db,params)
+
+        selects = ",
+        CASE @fil_prod_until
+            WHEN 'minimo' THEN
+                IF(mm.iproducto IS NULL AND @fil_gv = 'on',
+                    (p.minimo - p.existencia),
+                    (mm.uf_minimo - ex.existencia)
+                )
+            WHEN 'maximo' THEN
+                IF(mm.iproducto IS NULL AND @fil_gv = 'on',
+                    (p.maximo - p.existencia),
+                    (mm.uf_maximo - ex.existencia)
+                )
+            WHEN 'promedio' THEN
+                IF(mm.iproducto IS NULL AND @fil_gv = 'on',
+                    ((p.minimo + ((p.maximo - p.minimo)/2)) - p.existencia),
+                    ((mm.uf_minimo + ((mm.uf_maximo - mm.uf_minimo)/2)) - ex.existencia)
+                )
+        END AS cantidad_2
+        "
 
         joins = "LEFT JOIN ut_maxmin AS mm ON mm.iproducto = p.sys_pk LEFT JOIN existencias AS ex ON ex.fk_producto_iexistencias = p.sys_pk"
         
@@ -337,26 +362,104 @@ module ""
         if @@(params,"#fil_marca") > 0 { conditions = conditions + " AND p.imarca = @fil_marca" }
         if @@(params,"#fil_depto") > 0 { conditions = conditions + " AND p.idepartamento = @fil_depto" }
 
-        // Si no hay valores por almacén, usar los valores globales del producto.
-        if parse.bool(@@(params,"fil_gv"))
+        // Incluir productos iguales o por debajo del...
+        conditions = conditions + " AND IF(mm.iproducto IS NULL AND @fil_gv = 'on',
+            IFNULL(p.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(p.puntoro,0), IFNULL(p.minimo,0)),
+            IFNULL(ex.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(mm.uf_preorden,0), IFNULL(mm.uf_minimo,0))
+        )
+        "
+
+        return dbr.list(db,ftext(@qry_buscar_producto),params)
+    }
+
+    req.calculateTaxes::&product
+    {
+        costo = @@(product,"#precio")
+        cantidad = @@(product,"#cantidad")
+        descuentos = @@(product,"#descuentos")
+        i1_tasa = @@(product,"#i1_tasa")
+        i2_tasa = @@(product,"#i2_tasa")
+        i3_tasa = @@(product,"#i3_tasa")
+        i4_tasa = @@(product,"#i4_tasa")
+
+        subtotal = (costo * cantidad)
+        sub_desc = (subtotal - descuentos)
+        impuesto1 = (sub_desc * i1_tasa)
+        impuesto2 = (sub_desc * i2_tasa)
+        i1_i2 = (impuesto1 + impuesto2)
+        sub_desc_i1_i2 = (sub_desc + i1_i2)
+        impuesto3 = (sub_desc_i1_i2 * i3_tasa)
+        impuesto4 = (sub_desc_i1_i2 * i4_tasa)
+        i3_i4 = (impuesto3 + impuesto4)
+        impuestos = (i1_i2 + i3_i4)
+        total = (sub_desc + impuestos)
+
+        new taxes
         {
-            // Incluir productos iguales o por debajo del...
-            conditions = conditions + "
-            AND
-            IF(mm.iproducto IS NULL,
-                IFNULL(p.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(p.puntoro,0), IFNULL(p.minimo,0)),
-                IFNULL(ex.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(mm.uf_preorden,0), IFNULL(mm.uf_minimo,0))
-            )
-            "
-        }
-        else
-        {
-            // Incluir productos iguales o por debajo del...
-            conditions = conditions + " AND IFNULL(ex.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(mm.uf_preorden,0), IFNULL(mm.uf_minimo,0))"
+            @"costo": costo
+            @"cantidad": cantidad
+            @"subtotal": subtotal
+            @"descuentos": descuentos
+            @"impuestos": impuestos
+            @"total": total
+            @"impuesto1": impuesto1
+            @"impuesto2": impuesto2
+            @"impuesto3": impuesto3
+            @"impuesto4": impuesto4
         }
 
-        do rise_error(0,ftext(@qry_buscar_producto))
-        do rise_error(0,to.json(params))
+        return taxes
+    }
+
+    req.setStockKeeping::&db,&params,&data
+    {
+        ref products = req.getStockKeepingProducts(db,params)
+        ref dcmpreq = list.create()
+
+        subtotal = 0.00
+        impuestos = 0.00
+
+        for i = 0; i < list.count(products); i+1
+        {
+            ref product = list.obj(products,i)
+            product<"cantidad"> : @@(product,"#cantidad_2")
+
+            if @@(product,"#cantidad") > 0
+            {
+                ref taxes = req.calculateTaxes(product)
+
+                new item
+                {
+                    @"producto": @@(product,"#sys_pk")
+                    @"cantidad": @@(taxes,"#cantidad")
+                    @"unidad": @@(product,"$unidada")
+                    @"precio": @@(taxes,"#costo")
+                    @"impuestos": @@(taxes,"#impuestos")
+                    @"excluido": @false
+                    @"notas": ""
+                }
+
+                subtotal = subtotal + @@(taxes,"#subtotal")
+                impuestos = impuestos + @@(taxes,"#impuestos")
+                do list.add(dcmpreq,item)
+            }
+        }
+
+        data<"subtotal"> : subtotal
+        data<"impuestos"> : impuestos
+        data<"_detalle*"> : dcmpreq
+
+        using @childs
+        {
+            member "_detalle"
+            {
+                @"joinfield": "ref_req"
+                @"keyfield": "sys_pk"
+                @"table": "dcmpreq"
+                @"select_query": "SELECT NULL"
+                @"fields": "producto,cantidad,unidad,precio,impuestos,excluido,notas"
+            }
+        }
     }
 
     req.list::&db,&params
@@ -427,11 +530,28 @@ module ""
         }
 
         if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        
+        if @@(data,"#tipo") == @type_req_gop
+        {
+            cmpreq<"notas"> : "Requisición directa para gastos de operación."
+        }
         if @@(data,"#tipo") == @type_req_stock
         {
+            do field.remove(cmpreq,"partida")
+            do field.remove(cmpreq,"periodo")
+
+            cmpreq<"notas"> : "Requisición directa para mantenimiento de stock."
             cmpreq<"almacen"> : @@(data,"#almacen")
+
             ref filters = record.copy(data,"almacen,fil_clase,fil_linea,fil_marca,fil_depto,fil_gv,fil_prod_below,fil_prod_until")
             do req.setStockKeeping(db,filters,cmpreq)
+        }
+        if @@(data,"#tipo") == @type_req_gral
+        {
+            do field.remove(cmpreq,"partida")
+            do field.remove(cmpreq,"periodo")
+
+            cmpreq<"notas"> : "Requisición directa para previsión en general."
         }
         
         ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")

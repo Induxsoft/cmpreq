@@ -34,7 +34,7 @@ var requisiciones =
     },
 
     form: {
-        url_get_fultimo:"",
+        url_get_fultimo:"", url_get_linea:"",
 
         init()
         {
@@ -42,11 +42,17 @@ var requisiciones =
             const ik_partida_pre = document.getElementById("ik_partida_pre");
             const btn_get_folio = document.getElementById("btn_get_folio");
             const sel_divisa = document.getElementById("sel_divisa");
+            const fil_clase = document.getElementById("fil_clase");
 
             if (sel_ejercicio) sel_ejercicio.addEventListener("change", () => { ik_partida_pre.clear() });
             if (ik_partida_pre) ik_partida_pre.onBeforeSearch = (url) => { return this.prepareIkPartida(url) }
             if (btn_get_folio) btn_get_folio.addEventListener("click", () => { this.getFolio() });
             if (sel_divisa) sel_divisa.addEventListener("change", (event) => { this.setTipoCambio(event.target) });
+            if (fil_clase) fil_clase.addEventListener("change", (event) => {
+                let params = {iclase:event.target.value}
+                let first_object = {sys_pk: -1, descripcion: "(Todas las lineas)"}
+                this.fillSelect("fil_linea","sys_pk","descripcion",this.url_get_linea,params,first_object);
+            });
 
             this.setKeyboardShortcuts();
 
@@ -110,6 +116,36 @@ var requisiciones =
             const txt_tcambio = document.getElementById("txt_tcambio");
             
             txt_tcambio.value = Number(opt_divisa.getAttribute("data-tcambio") ?? "1");
+        },
+
+        fillSelect(id, kf, vf, url, params={}, fo={})
+        {
+            const select = document.getElementById(id);
+
+            let endpoint = InduxsoftCrudlModel.UrlReplace(url,params);
+            let selected = select.value ?? "";
+
+            fetch(endpoint).then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
+                
+                select.innerHTML = "";
+
+                if (Object.keys(fo).length >= 2) data.unshift(fo);
+
+                data.forEach(obj => {
+                    const option = document.createElement("option");
+                    option.value = obj[kf];
+                    option.text = obj[vf];
+                    if (obj[kf] === selected) option.selected = true;
+
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error(error));
         },
     },
 
