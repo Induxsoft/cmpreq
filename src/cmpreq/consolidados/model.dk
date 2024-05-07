@@ -132,7 +132,7 @@ module ""
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"ucreo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
             @"consolidacion": @true
         }
 

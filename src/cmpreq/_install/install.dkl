@@ -9,11 +9,23 @@ program "instalador"
     // Archivos de datos iniciales (Orden de importación)
     // deben estar en la carpeta _install/initial_data
     ref @files_to_import = from.json('[
-        "cmpreq_status.csv"
+        "cmpreq_status.csv",
+        "cmpreq_type.csv"
     ]')
 
     // Lista de privilegios iniciales (arreglo de id de privilegios)
     ref @permissions_to_import = from.json('[]')
+
+    // Id del grupo de tareas (recomendado: prefijo del paquete), si se omite se calculará automáticamente.
+    // https://docs.induxsoft.net/es/productos/v12/devops/official-v12-packs.dkl
+    /**
+    * Los programas deben estar en la ruta: _install\tasks
+    * Ejemplo:
+    * _install\tasks
+    *    - importar.productos.dkl -> Archivo de programa
+    *    - importar.productos.json -> Configuración de parámetros del archivo de programas
+    */
+    @jobs_group_id = "TD"
     
     /*************************************************************************************/
     #include "v12.install.lib.dk"

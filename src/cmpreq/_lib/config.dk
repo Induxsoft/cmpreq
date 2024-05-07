@@ -28,6 +28,11 @@ module
 	@stt_adm_cerrado = 2
 	@stt_adm_procesado = 3
 	@stt_adm_cancelado = 99
+	// cmpreq_type
+	@type_req_gop = 1
+	@type_req_stock = 2
+	@type_req_gral = 3
+	@type_req_consl = 10
 
 	@default_max_rows = 250 // limite de registros para las vistas de lista
 
@@ -55,6 +60,7 @@ module
 	@URL_AGREGAR_PEDIDO = "/!/compras/compras/_new/"
 
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
+	@CMP_NEW_REQUISICION = "/!/cmpreq/requisiciones/_new/?cmpreq_type={type}"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"
 	@CMP_SOLCOT = "/!/cmpreq/solcot/"
 	@CMP_IN_PROCESS = "/!/cmpreq/solcot/{ireq}/cmp-in-process/"

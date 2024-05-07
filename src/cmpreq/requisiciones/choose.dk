@@ -1,0 +1,91 @@
+#include "dkli.dkh"
+#!
+module "form.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+	#include "../_lib/icons.dk"
+
+    do @context.begin(@crud_context)
+
+    ref @_GET = ifnull(@("&parameters"),record.create())
+
+	@_entities_type = @("$parameters/_entities_type")
+	@_entity_id = @("$parameters/_entity_id")
+
+    new nav_config
+    {
+        @"title": "Nueva requisición"
+        @"buttons*": @null
+        @"urlexit": "../"
+        member @"hidden"
+        {
+            @"print": @true
+            @"refresh": @true
+        }
+    }
+
+    #$
+    div(class="container")
+    {
+        link(href="#<@CSS_MAIN>" rel="stylesheet")
+
+        #!
+        do uie.printV12FormBar(nav_config)
+        #$
+
+        div(id="work_area" class="container-section")
+        {
+            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')> overflow-auto"){$"#<@('$error/message')>"}
+
+            form(method="GET" action="./" id="form-choose-cmpreq")
+            {
+                div(class="row justify-content-center")
+                {
+                    div(class="col-lg-6 col-md-9 col-sm-12 border py-2")
+                    {
+                        div(class="row gx-2")
+                        {
+                            div(class="col-12")
+                            {
+                                h6(class=""){$"Requisición directa"}
+                                div(class="form-check")
+                                {
+                                    input(class="form-check-input" type="radio" name="cmpreq_type" value="#<@type_req_gop>" id="rdb_gastos_operacion" checked="")
+                                    label(class="form-check-label" "for"="rdb_gastos_operacion"){$"Gatos de operación"}
+                                }
+                                div(class="form-check")
+                                {
+                                    input(class="form-check-input" type="radio" name="cmpreq_type" value="#<@type_req_stock>" id="rdb_mantenimiento_stock")
+                                    label(class="form-check-label" "for"="rdb_mantenimiento_stock"){$"Mantenimiento de stock"}
+                                }
+                                div(class="form-check")
+                                {
+                                    input(class="form-check-input" type="radio" name="cmpreq_type" value="#<@type_req_gral>" id="rdb_prevision_general")
+                                    label(class="form-check-label" "for"="rdb_prevision_general"){$"Previsión en general"}
+                                }
+                            }
+
+                            div(class="col-12")
+                            {
+                                h6(class=""){$"Requisición consolidada"}
+                                div(class="form-check")
+                                {
+                                    input(class="form-check-input" type="radio" name="cmpreq_type" value="#<@type_req_consl>" id="rdb_consolidacion")
+                                    label(class="form-check-label" "for"="rdb_consolidacion"){$"Crear consolidación"}
+                                }
+                            }
+                        }
+
+                        div(class="text-end mt-2")
+                        {
+                            button(class="btn btn-primary btn-sm rounded-0" type="submit"){$"Continuar #<@ICON_ARROW_RIGHT>"}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

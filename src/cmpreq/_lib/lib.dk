@@ -75,6 +75,31 @@ module "Funciones de propósito general:lib"
         return list
     }
 
+    function curr_url()
+    {
+        if not(isset("@http_context")) && isset("@crud_context") { ref @http_context = ifnull(@@(@crud_context,"&http"),record.create()) }
+        ref parameters = ifnull(@@(@http_context,"&request/get"),record.create())
+
+        v12_params = "_pack,_program,_entities_type,_entity_id,_view,_operation"
+        ref v12params = record.copy(parameters,v12_params)
+
+        v12_path = "/!/_pack/_program/_entity_id/_view/"
+        go foreach.fstr(key:key, value:value) with(v12params)
+        {
+            v12_path = replace(v12_path,key,value)
+        }
+        v12_path = replace(v12_path,"//","/")
+
+        http_args = "?"
+        go foreach.fstr(key:key, value:value) with(parameters)
+        {
+            if not(containsword(key,v12_params)) { http_args = http_args + key + "=" + value + "&" }
+        }
+        http_args = rremove(http_args,1)
+
+        return path.concat(v12_path,http_args)
+    }
+
     function form(name,type,&obj)
     {
         name = trim(str(name))
@@ -142,7 +167,7 @@ module "Funciones de propósito general:lib"
         exception{ return @false }
     }
 
-    function getPkUsr(&db,usrId)
+    function GetPkUsr(&db,usrId)
     {
         new params { @"id": usrId }
         return dbr.num(db,"SELECT sys_pk FROM tuser WHERE sys_pk = @id OR sys_guid = @id OR userid = @id",params)

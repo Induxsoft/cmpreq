@@ -480,7 +480,7 @@ module ""
             @"sys_recver": @@(data,"#sys_recver")
             @"cancelada": @true
             @"motivo": trim(@@(data,"$motivo"))
-            @"ucancelo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucancelo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
         ref entity = entity.update(db,params,solcot)
@@ -511,7 +511,7 @@ module ""
             @"redaccion": trim(@@(data,"$redaccion"))
             @"notas": trim(@@(data,"$notas"))
             @"req": @@(data,"#req")
-            @"ucreo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
         }
 
         if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }

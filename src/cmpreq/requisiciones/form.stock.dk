@@ -13,9 +13,16 @@ module "form.dk"
 
     ref @_GET = ifnull(@("&parameters"),record.create())
     ref cmpreq = ifnull(@("&./cmpreq"),record.create())
+    ref dt_unidad_org = ifnull(@("&./dt_unidad_org"),record.create())
+    ref dt_partida_pre = ifnull(@("&./dt_partida_pre"),record.create())
     ref list_series =ifnull(@("&./list_series"),list.create())
     ref list_status = ifnull(@("&./list_status"),list.create())
     ref list_divisas = ifnull(@("&./list_divisas"),list.create())
+    ref list_almacenes = ifnull(@("&./list_almacenes"),list.create())
+    ref list_clases = ifnull(@("&./list_clases"),list.create())
+    ref list_lineas = ifnull(@("&./list_lineas"),list.create())
+    ref list_marcas = ifnull(@("&./list_marcas"),list.create())
+    ref list_deptos = ifnull(@("&./list_deptos"),list.create())
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
@@ -75,11 +82,92 @@ module "form.dk"
         @"selected": lib.form('divisa','nm',cmpreq)
     }
 
+    new sel_almacen
+    {
+        @"datatable*": list_almacenes
+        @"id": "sel_almacen"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "almacen"
+            @"required": ""
+        }
+        // @"first_value": "-1"
+        // @"first_text": "(Todos los almacenes)"
+        @"value_field": "sys_pk"
+        @"text_field": "descripcion"
+        @"selected": lib.form('almacen','nm',cmpreq)
+    }
+
+    new fil_clase
+    {
+        @"datatable*": list_clases
+        @"id": "fil_clase"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "fil_clase"
+        }
+        @"first_value": "-1"
+        @"first_text": "(Todas las clases)"
+        @"value_field": "id"
+        @"text_field": "const"
+        @"selected": lib.form('fil_clase','nm',cmpreq)
+    }
+
+    new fil_linea
+    {
+        @"datatable*": list_lineas
+        @"id": "fil_linea"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "fil_linea"
+        }
+        @"first_value": "-1"
+        @"first_text": "(Todas las lineas)"
+        @"value_field": "sys_pk"
+        @"text_field": "descripcion"
+        @"selected": lib.form('fil_linea','nm',cmpreq)
+    }
+
+    new fil_marca
+    {
+        @"datatable*": list_marcas
+        @"id": "fil_marca"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "fil_marca"
+        }
+        @"first_value": "-1"
+        @"first_text": "(Todas las marcas)"
+        @"value_field": "sys_pk"
+        @"text_field": "descripcion"
+        @"selected": lib.form('fil_marca','nm',cmpreq)
+    }
+
+    new fil_depto
+    {
+        @"datatable*": list_deptos
+        @"id": "fil_depto"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "fil_depto"
+        }
+        @"first_value": "-1"
+        @"first_text": "(Todos los departamentos)"
+        @"value_field": "sys_pk"
+        @"text_field": "descripcion"
+        @"selected": lib.form('fil_depto','nm',cmpreq)
+    }
+
     new nav_config
     {
-        @"title": "Nuevo consolidado"
+        @"title": "Nueva requisición"
         @"buttons*": @null
-        @"urlexit": @CMP_REQUISICION
+        @"urlexit": "../"
         member @"hidden"
         {
             @"print": @true
@@ -104,7 +192,7 @@ module "form.dk"
             {
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
-                input(type="hidden" name="tipo" value="#<@type_req_consl>")
+                input(type="hidden" name="tipo" value="#<@type_req_stock>")
 
                 div(class="row justify-content-center")
                 {
@@ -158,6 +246,76 @@ module "form.dk"
                                 do uie.dbSelect(sel_status)
                                 ##
                             }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="sel_almacen"){$"Almacén:"}
+                                ##
+                                do uie.dbSelect(sel_almacen)
+                                ##
+                            }
+                        }
+
+                        hr{$""}
+
+                        h6(class=""){$"Filtro de productos"}
+                        div(class="row gx-2 gy-2")
+                        {
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                ##
+                                do uie.dbSelect(fil_clase)
+                                ##
+                            }
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                ##
+                                do uie.dbSelect(fil_linea)
+                                ##
+                            }
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                ##
+                                do uie.dbSelect(fil_marca)
+                                ##
+                            }
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                ##
+                                do uie.dbSelect(fil_depto)
+                                ##
+                            }
+                            div(class="col-12")
+                            {
+                                div(class="form-check")
+                                {
+                                    #!
+                                    checked = lib.form("fil_gv","ch",cmpreq)
+                                    #$
+                                    input(class="form-check-input" type="checkbox" name="fil_gv" id="chk_use_gv" "#<checked>"="")
+                                    label(class="form-check-label" "for"="chk_use_gv"){$"Si no hay valores por almacén, usar los valores globales del producto"}
+                                }
+                            }
+                            div(class="col-12")
+                            {
+                                div(class="d-inline-flex align-items-center gap-1")
+                                {
+                                    label(class="form-label" "for"="fil_prod_below"){$"Incluir productos iguales o por debajo del:"}
+                                    select(class="form-select form-select-sm rounded-0 w-auto" name="fil_prod_below" id="fil_prod_below")
+                                    {
+                                        option(value="preorden"){$"Punto de re-orden"}
+                                        option(value="minimo"){$"Mínimo"}
+                                    }
+
+                                    label(class="form-label" "for"="fil_prod_until"){$"Hasta alcanzar el:"}
+                                    select(class="form-select form-select-sm rounded-0 w-auto" name="fil_prod_until" id="fil_prod_until")
+                                    {
+                                        option(value="minimo"){$"Mínimo"}
+                                        option(value="maximo"){$"Máximo"}
+                                        option(value="promedio"){$"Promedio"}
+                                    }
+                                }
+                            }
                         }
 
                         div(class="text-end mt-2")
@@ -171,13 +329,12 @@ module "form.dk"
 
         #$
         script(src="#<@JS_MAIN>"){$""}
-        script(src="#<@JS_CONSOLIDADOS>"){$""}
+        script(src="#<@JS_REQUISICIONES>"){$""}
 		script(type="text/javascript")
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
-                consolidados.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
-                consolidados.form.url_exit = "#<@CMP_REQUISICION>";
-                consolidados.form.init();
+                requisiciones.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
+                requisiciones.form.init();
                 InduxsoftNumberFields.Init();
             });
 		'}

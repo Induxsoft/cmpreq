@@ -730,6 +730,16 @@ model "erp.requisiciones"
         * 99-Cancelada
         */
     }
+    // Tipos de requisiciones
+    entity "cmpreq_type" : "EnumModel"
+    {
+        /**
+        * 1-Gastos de operacion
+        * 2-Mantenimiento de stock
+        * 3-Previsión en general
+        * 10-Consolidación
+        */
+    }
     // Requisiciones
     entity "cmpreq": "TableModel"
     {
@@ -749,6 +759,8 @@ model "erp.requisiciones"
         @"impuestos" decimal(14,4) required // No modificable de manera directa, lo calcula el modelo
         @"divisa" ref:"divisa" required
         @"tcambio" decimal(12,6) required
+        @"tipo" ref:"cmpreq_type"
+        @"almacen" ref:"almacen"
     }
     // Detalle de la requisición
     entity "dcmpreq": "TableModel"

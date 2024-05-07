@@ -134,6 +134,7 @@ module "form.dk"
             {
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
+                input(type="hidden" name="tipo" value="#<@type_req_gop>")
 
                 div(class="row justify-content-center")
                 {
@@ -145,10 +146,7 @@ module "form.dk"
                             {
                                 label(class="form-label" "for"="ik_unidad_org"){$"Unidad organizacional:"}
                                 "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
-                                    "data-value"="#<to.json(dt_unidad_org)>"
-                                    "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>"
-                                    columns="codigo,descripcion"
-                                    colcaptions="Código,Descripción"
+                                    "data-value"="#<to.json(dt_unidad_org)>" "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>" columns="codigo,descripcion" colcaptions="Código,Descripción"
                                     "control-styles"="
                                         #input_search_container, #input_description_container,
                                         #button_search_container, #button_clear_container {
@@ -182,10 +180,7 @@ module "form.dk"
                             {
                                 label(class="form-label" "for"="ik_partida_pre"){$"Partida presupuestal:"}
                                 "input-key"(name="partida" id="ik_partida_pre" required="true" "data-key"="sys_pk" "data-search"="id" "data-text"="partida"
-                                    "data-value"="#<to.json(dt_partida_pre)>"
-                                    "data-source"="#<@URL_BUSCAR_PARTIDA_PRE>"
-                                    columns="id,partida"
-                                    colcaptions="Id,Partida"
+                                    "data-value"="#<to.json(dt_partida_pre)>" "data-source"="#<@URL_BUSCAR_PARTIDA_PRE>" columns="id,partida" colcaptions="Id,Partida"
                                     "control-styles"="
                                         #input_search_container, #input_description_container,
                                         #button_search_container, #button_clear_container {

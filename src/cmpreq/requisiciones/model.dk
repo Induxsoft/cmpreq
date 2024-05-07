@@ -5,7 +5,7 @@ module ""
     @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
-    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio"
+    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio,tipo,almacen"
     @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
     
     @create_exclude_fields = "sys_lastuser"
@@ -132,6 +132,15 @@ module ""
             data<"list_series*"> : dbr.list(db, @qry_list_series, args)
             data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
             data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
+
+            if @@(params,"#cmpreq_type") == @type_req_stock
+            {
+                data<"list_almacenes*"> : dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM almacen WHERE NOT IFNULL(sys_deleted,0)",@null)
+                data<"list_clases*"> : dbr.list(db,"SELECT id, const FROM cclaseproducto",@null)
+                data<"list_lineas*"> : list.create()
+                data<"list_marcas*"> : dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM marca WHERE NOT IFNULL(sys_deleted,0)",@null)
+                data<"list_deptos*"> : dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM departamento WHERE NOT IFNULL(sys_deleted,0)",@null)
+            }
         }
         else
         {
@@ -256,7 +265,7 @@ module ""
                 { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
             }
 
-            cmpreq<"uaprobo"> : lib.getPkUsr(db, @@(@http_context, "$session/user/uid"))
+            cmpreq<"uaprobo"> : lib.GetPkUsr(db, @@(@http_context, "$session/user/uid"))
         }
 
         if new_status == @stt_cancelado
@@ -312,6 +321,42 @@ module ""
             // do prepareView(db,params,data)
             do rise_error(code,error)
         }
+    }
+
+    req.setStockKeeping::&db,&params,&data
+    {
+        do setZonaImpuesto(db,params)
+
+        joins = "LEFT JOIN ut_maxmin AS mm ON mm.iproducto = p.sys_pk LEFT JOIN existencias AS ex ON ex.fk_producto_iexistencias = p.sys_pk"
+        
+        conditions = ""
+
+        if @@(params,"#almacen") > 0 { conditions = conditions + " AND mm.ialmacen = @almacen AND ex.ialmacen = @almacen" }
+        if @@(params,"#fil_clase") > 0 { conditions = conditions + " AND p.iclase = @fil_clase" }
+        if @@(params,"#fil_linea") > 0 { conditions = conditions + " AND p.ilinea = @fil_linea" }
+        if @@(params,"#fil_marca") > 0 { conditions = conditions + " AND p.imarca = @fil_marca" }
+        if @@(params,"#fil_depto") > 0 { conditions = conditions + " AND p.idepartamento = @fil_depto" }
+
+        // Si no hay valores por almacén, usar los valores globales del producto.
+        if parse.bool(@@(params,"fil_gv"))
+        {
+            // Incluir productos iguales o por debajo del...
+            conditions = conditions + "
+            AND
+            IF(mm.iproducto IS NULL,
+                IFNULL(p.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(p.puntoro,0), IFNULL(p.minimo,0)),
+                IFNULL(ex.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(mm.uf_preorden,0), IFNULL(mm.uf_minimo,0))
+            )
+            "
+        }
+        else
+        {
+            // Incluir productos iguales o por debajo del...
+            conditions = conditions + " AND IFNULL(ex.existencia,0) <= IF(@fil_prod_below = 'preorden', IFNULL(mm.uf_preorden,0), IFNULL(mm.uf_minimo,0))"
+        }
+
+        do rise_error(0,ftext(@qry_buscar_producto))
+        do rise_error(0,to.json(params))
     }
 
     req.list::&db,&params
@@ -377,10 +422,17 @@ module ""
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"ucreo": lib.getPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
+            @"tipo": @@(data,"#tipo")
         }
 
         if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        if @@(data,"#tipo") == @type_req_stock
+        {
+            cmpreq<"almacen"> : @@(data,"#almacen")
+            ref filters = record.copy(data,"almacen,fil_clase,fil_linea,fil_marca,fil_depto,fil_gv,fil_prod_below,fil_prod_until")
+            do req.setStockKeeping(db,filters,cmpreq)
+        }
         
         ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
 

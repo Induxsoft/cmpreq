@@ -129,7 +129,9 @@ module ""
     FROM producto AS p
         INNER JOIN divisa AS dvs ON dvs.sys_pk = p.idivisa
         INNER JOIN cfgimpuesto AS imp ON imp.sys_pk = p.impuestos
-    WHERE TRUE #<conditions>
+        #<joins>
+    WHERE TRUE
+        #<conditions>
     "
 
     @qry_buscar_unidad = "SELECT sys_pk, codigo, descripcion FROM rh_unidad_org WHERE TRUE #<conditions>"

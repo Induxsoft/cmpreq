@@ -31,9 +31,19 @@ module ""
         }
         default
         {
-            @form_view = "form.new.dk"
+            _entity_id = @@(@http_context,"$request/get/_entity_id")
+            cmpreq_type = @@(@http_context,"#request/get/cmpreq_type")
+
+            if cmpreq_type == @type_req_gop { @form_view = "form.new.dk" }
+            else if cmpreq_type == @type_req_stock { @form_view = "form.stock.dk" }
+            else if cmpreq_type == @type_req_gral { @form_view = "form.gral.dk" }
+            else if cmpreq_type == @type_req_consl {
+                @http_context<"response/headers/location"> : path.concat(@CMP_CONSOLIDADO,"_new")
+                return
+            }
+            else { @form_view = "choose.dk" }
             
-            if @@(@http_context,"$request/get/_entity_id") != "_new" { @form_view = "form.edt.dk" }
+            if _entity_id != "_new" { @form_view = "form.edt.dk" }
 
             point @list to req.list
             point @read to req.read
