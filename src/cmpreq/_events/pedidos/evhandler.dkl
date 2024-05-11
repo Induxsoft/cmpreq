@@ -40,7 +40,21 @@ program "Controlador de eventos"
             // Finalizar proceso si la requisición no es 'Directa'.
             if @@(req,"$tipo") != "D" { break }
 
-            if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(data,"#total") * -1)))
+            new gop_mov_data
+            {
+                @"ipartida": @@(req,"$partida_id") // (int|string) Identificador de la partida [sys_pk,sys_guid,id].
+                @"referencia": @@(data,"$referencia") // Referencia del elemento que realiza la afectación.
+                @"ejercicio": @@(req,"#ejercicio") // (int) Ejercicio (yyyy) del presupuesto de la partida.
+                @"periodo": @@(req,"#periodo") // (int) Mes (MM) sobre el que se hara la afectación.
+                @"comprometido": 0 // (decimal) Monto (+\-) de la afectación.
+                @"ejercido": (@@(data,"#total") * -1) // (decimal) Monto (+\-) de la afectación.
+                @"det": "DET01B" // (string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                @"det_id": @@(data,"#sys_pk") // (int) Clave primaria del elemento que realiza la afectación.
+                @"usuario": "" // (string) UserId del usuario logueado que realiza la afectación.
+                @"notas": "Cancelación del pedido de la requisición: " + @@(req,"$referencia")
+            }
+            // if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(data,"#total") * -1)))
+            if not(pregop.partida.movimiento(db,gop_mov_data))
             { do rise_error(500,"Hubo un problema al afectar el ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
 
             break

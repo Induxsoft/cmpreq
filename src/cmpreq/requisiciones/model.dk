@@ -265,8 +265,22 @@ module ""
                 ref pre = pregop.partida.importes(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"))
 
                 if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto en el periodo seleccionado.") }
-                
-                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), @@(req,"#importe")))
+
+                new gop_mov_data
+                {
+                    @"ipartida": @@(req,"$partida_id") // (int|string) Identificador de la partida [sys_pk,sys_guid,id].
+                    @"referencia": @@(req,"$referencia") // Referencia del elemento que realiza la afectación.
+                    @"ejercicio": @@(req,"#ejercicio") // (int) Ejercicio (yyyy) del presupuesto de la partida.
+                    @"periodo": @@(req,"#periodo") // (int) Mes (MM) sobre el que se hara la afectación.
+                    @"comprometido": @@(req,"#importe") // (decimal) Monto (+\-) de la afectación.
+                    @"ejercido": 0 // (decimal) Monto (+\-) de la afectación.
+                    @"det": "DET070" // (string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                    @"det_id": @@(req,"#sys_pk") // (int) Clave primaria del elemento que realiza la afectación.
+                    @"usuario": @@(@http_context, "$session/user/uid") // (string) UserId del usuario logueado que realiza la afectación.
+                    @"notas": "Requisición aprobada"
+                }
+                // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), @@(req,"#importe")))
+                if not(pregop.partida.movimiento(db,gop_mov_data))
                 { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
             }
 
@@ -279,7 +293,21 @@ module ""
             
             if @@(req,"$tipo") == "D"
             {
-                if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                new gop_mov_data
+                {
+                    @"ipartida": @@(req,"$partida_id") // (int|string) Identificador de la partida [sys_pk,sys_guid,id].
+                    @"referencia": @@(req,"$referencia") // Referencia del elemento que realiza la afectación.
+                    @"ejercicio": @@(req,"#ejercicio") // (int) Ejercicio (yyyy) del presupuesto de la partida.
+                    @"periodo": @@(req,"#periodo") // (int) Mes (MM) sobre el que se hara la afectación.
+                    @"comprometido": (@@(req,"#importe") * -1) // (decimal) Monto (+\-) de la afectación.
+                    @"ejercido": 0 // (decimal) Monto (+\-) de la afectación.
+                    @"det": "DET070" // (string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                    @"det_id": @@(req,"#sys_pk") // (int) Clave primaria del elemento que realiza la afectación.
+                    @"usuario": @@(@http_context, "$session/user/uid") // (string) UserId del usuario logueado que realiza la afectación.
+                    @"notas": "Requisición cancelada"
+                }
+                // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                if not(pregop.partida.movimiento(db,gop_mov_data))
                 { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente.") }
             }
 
@@ -291,7 +319,21 @@ module ""
                     ref itm = list.obj(list_reqs,i)
                     ref req = entity.read(db,itm)
 
-                    if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                    new gop_mov_data
+                    {
+                        @"ipartida": @@(req,"$partida_id") // (int|string) Identificador de la partida [sys_pk,sys_guid,id].
+                        @"referencia": @@(req,"$referencia") // Referencia del elemento que realiza la afectación.
+                        @"ejercicio": @@(req,"#ejercicio") // (int) Ejercicio (yyyy) del presupuesto de la partida.
+                        @"periodo": @@(req,"#periodo") // (int) Mes (MM) sobre el que se hara la afectación.
+                        @"comprometido": (@@(req,"#importe") * -1) // (decimal) Monto (+\-) de la afectación.
+                        @"ejercido": 0 // (decimal) Monto (+\-) de la afectación.
+                        @"det": "DET070" // (string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                        @"det_id": @@(req,"#sys_pk") // (int) Clave primaria del elemento que realiza la afectación.
+                        @"usuario": @@(@http_context, "$session/user/uid") // (string) UserId del usuario logueado que realiza la afectación.
+                        @"notas": "Requisición cancelada"
+                    }
+                    // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                    if not(pregop.partida.movimiento(db,gop_mov_data))
                     { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
                 }
 
