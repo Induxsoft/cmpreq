@@ -346,16 +346,15 @@ module ""
             {
                 new gop_mov_data
                 {
-                    @"ipartida": @@(req,"$partida_id") // (int|string) Identificador de la partida [sys_pk,sys_guid,id].
-                    @"referencia": @@(req,"$referencia") // Referencia del elemento que realiza la afectación.
-                    @"ejercicio": @@(req,"#ejercicio") // (int) Ejercicio (yyyy) del presupuesto de la partida.
-                    @"periodo": @@(req,"#periodo") // (int) Mes (MM) sobre el que se hara la afectación.
-                    @"comprometido": (@@(req,"#importe") * -1) // (decimal) Monto (+\-) de la afectación.
-                    @"ejercido": dbr.num(db,sql_total_pedido,params) // (decimal) Monto (+\-) de la afectación.
-                    @"det": "DET070" // (string) Código DET (Data Element Type) del elemento que realiza la afectación.
-                    @"det_id": @@(req,"#sys_pk") // (int) Clave primaria del elemento que realiza la afectación.
-                    @"usuario": @@(@http_context, "$session/user/uid") // (string) UserId del usuario logueado que realiza la afectación.
-                    @"notas": "Pedido generado"
+                    @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                    @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
+                    @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
+                    @"comprometido": (@@(req,"#importe") * -1) //(decimal) Monto (+\-) de la afectación.
+                    @"ejercido": dbr.num(db,sql_total_pedido,params) //(decimal) Monto (+\-) de la afectación.
+                    @"det": "DET070" //(string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                    @"det_id": @@(req,"#sys_pk") //(int) Clave primaria del elemento que realiza la afectación.
+                    @"usuario": @@(@http_context, "$session/user/uid") //(string) UserId del usuario logueado que realiza la afectación.
+                    @"notas": "Pedido generado" //(string) Descripción sobre el movimiento de afectación de presupuesto.
                 }
                 if not(pregop.partida.movimiento(db,gop_mov_data))
                 { do rise_error(500,"Hubo un problema al afectar la partida") }
@@ -379,16 +378,15 @@ module ""
 
                     new gop_mov_data
                     {
-                        @"ipartida": @@(req,"$partida_id") // (int|string) Identificador de la partida [sys_pk,sys_guid,id].
-                        @"referencia": @@(req,"$referencia") // Referencia del elemento que realiza la afectación.
-                        @"ejercicio": @@(req,"#ejercicio") // (int) Ejercicio (yyyy) del presupuesto de la partida.
-                        @"periodo": @@(req,"#periodo") // (int) Mes (MM) sobre el que se hara la afectación.
-                        @"comprometido": (@@(req,"#importe") * -1) // (decimal) Monto (+\-) de la afectación.
-                        @"ejercido": dbr.num(db,sql_total_pedido,params) // (decimal) Monto (+\-) de la afectación.
-                        @"det": "DET070" // (string) Código DET (Data Element Type) del elemento que realiza la afectación.
-                        @"det_id": @@(req,"#sys_pk") // (int) Clave primaria del elemento que realiza la afectación.
-                        @"usuario": @@(@http_context, "$session/user/uid") // (string) UserId del usuario logueado que realiza la afectación.
-                        @"notas": "Pedido generado"
+                        @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                        @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
+                        @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
+                        @"comprometido": (@@(req,"#importe") * -1) //(decimal) Monto (+\-) de la afectación.
+                        @"ejercido": dbr.num(db,sql_total_pedido,params) //(decimal) Monto (+\-) de la afectación.
+                        @"det": "DET070" //(string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                        @"det_id": @@(req,"#sys_pk") //(int) Clave primaria del elemento que realiza la afectación.
+                        @"usuario": @@(@http_context, "$session/user/uid") //(string) UserId del usuario logueado que realiza la afectación.
+                        @"notas": "Pedido generado" //(string) Descripción sobre el movimiento de afectación de presupuesto.
                     }
                     if not(pregop.partida.movimiento(db,gop_mov_data))
                     { do rise_error(500,"Hubo un problema al afectar la partida de la requisición: " + @@(req,"$referencia")) }
