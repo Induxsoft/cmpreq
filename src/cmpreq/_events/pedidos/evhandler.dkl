@@ -13,12 +13,18 @@ program "Controlador de eventos"
     do @context.begin(@event_context)
 
     ref db:@("&database")
-    ref data:@("&eventdata")
+    ref data:@("&eventdata/output")
 
-    // do file.wtext("___eventdata.json", to.json(data))
+    // do file.wtext("___event_context.json", to.json(@event_context))
+    // do rise_error(0,"stop!")
 
     switch trim(@("$event"))
     {
+        case "pre_GA14"
+        {
+            // code...
+            break
+        }
         case "pos_GA14" // Cancelar documento de compra
         {
             // Finalizar proceso si el documento no pertenece a un Pedido.
@@ -58,7 +64,7 @@ program "Controlador de eventos"
 
             break
         }
-        default
+        case "ext_GA14"
         {
             // code...
             break

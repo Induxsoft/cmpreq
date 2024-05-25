@@ -404,13 +404,23 @@ module ""
 
         read::&db,&params
         {
+            do dbr.apps.action.grant("TD19")
+
             new data
             {
                 @"entity*": dbr.rec(db,ftext(@qry_cmpreq),params)
             }
             do prepareView(db,params,data)
-            
             return data
+
+            exception
+            {
+                do errordet(@false)
+                code = last_error_code()
+                error = last_error()
+                do dbr.apps.action.log()
+                do rise_error(code,error)
+            }
         }
 
         pedir::&db,&params,&data
@@ -418,10 +428,10 @@ module ""
             @use_transaction = @false
             @cmpreq_status = @stt_completado
             
-            ref asignados = cc.obtenerCotizacionesDeAsignados(db,data)
-
+            do dbr.apps.action.pre("TD1A")
             do dbr.begin(db)
 
+            ref asignados = cc.obtenerCotizacionesDeAsignados(db,data)
             ref list = list.create_from_fields(asignados)
             
             for i = 0; i < list.count(list)
@@ -443,7 +453,11 @@ module ""
             "
             do dbr.execute(db,ftext(sql_set_status),params)
 
+            ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
+
+            do dbr.apps.action.pos(req)
             do dbr.commit(db)
+            do dbr.apps.action.ext(req)
 
             @url_redir = replace(@CMP_IN_PROCESS, "{ireq}", @@(params,"$_entity_id"))
 
@@ -460,6 +474,7 @@ module ""
                 data<"form*"> : FormData
 
                 do prepareView(db,params,data)
+                do dbr.apps.action.log()
                 do rise_error(code,error)
             }
         }
@@ -467,6 +482,11 @@ module ""
 
     sol.agregarCotizacion::&db,&params,&data
     {
+        @use_transaction = @false
+
+        do dbr.apps.action.pre("TD17")
+        do dbr.begin(db)
+
         new solcot
         {
             @"sys_pk": @@(data,"#sys_pk")
@@ -492,17 +512,58 @@ module ""
         if p_faltantes > 0 { solcot<"completa"> : @false }
 
         ref entity = entity.update(db,params,solcot)
+        
+        do dbr.apps.action.pos(entity)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
+        
         return entity
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db){ do dbr.rollback(db) }
+            code = last_error_code()
+            error = last_error()
+            do dbr.apps.action.log()
+            do rise_error(code,error)
+        }
     }
 
     sol.removerCotizacion::&db,&params,&data
     {
+        @use_transaction = @false
+
+        do dbr.apps.action.pre("TD18")
+        do dbr.begin(db)
+
         do dbr.execute(db,"UPDATE solcot SET cotizacion = NULL, completa = FALSE WHERE sys_pk = @_entity_id",params)
-        return entity.read(db,params)
+        ref entity = entity.read(db,params)
+
+        do dbr.apps.action.pos(entity)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
+
+        return entity
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db){ do dbr.rollback(db) }
+            code = last_error_code()
+            error = last_error()
+            do dbr.apps.action.log()
+            do rise_error(code,error)
+        }
     }
 
     sol.cancelar::&db,&params,&data
     {
+        @use_transaction = @false
+
+        do dbr.apps.action.pre("TD33")
+        do dbr.begin(db)
+
         new solcot
         {
             @"sys_pk": @@(data,"#sys_pk")
@@ -514,7 +575,22 @@ module ""
         }
 
         ref entity = entity.update(db,params,solcot)
+
+        do dbr.apps.action.pos(entity)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
+
         return entity
+
+        exception
+        {
+            do errordet(@false)
+            if dbr.in_transaction(db){ do dbr.rollback(db) }
+            code = last_error_code()
+            error = last_error()
+            do dbr.apps.action.log()
+            do rise_error(code,error)
+        }
     }
 
     sol.create::&db,&params,&data
@@ -524,6 +600,7 @@ module ""
         serie = trim(@@(data,"$serie"))
         folio = abs(@@(data,"#folio"))
 
+        do dbr.apps.action.pre("TD31")
         do dbr.begin(db)
 
         iblock = dbr.folios.id_block(db,@cCotizacion,serie)
@@ -547,7 +624,10 @@ module ""
         if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }
 
         ref entity = entity.create(db,params,solcot)
+        
+        do dbr.apps.action.pos(entity)
         do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
 
         return entity
 
@@ -564,6 +644,7 @@ module ""
             data<"form*"> : FormData
 
             do prepareView(db,params,data)
+            do dbr.apps.action.log()
             do rise_error(code,error)
         }
     }
@@ -572,6 +653,7 @@ module ""
     {
         @use_transaction = @false
 
+        do dbr.apps.action.pre("TD32")
         do dbr.begin(db)
 
         new solcot
@@ -587,7 +669,10 @@ module ""
         if trim(@@(data,"$fenvio")) != "" { solcot<"fenvio*"> : str2dt(trim(@@(data,"$fenvio"))) }
 
         ref entity = entity.update(db,params,solcot)
+        
+        do dbr.apps.action.pos(entity)
         do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
 
         return entity
 
@@ -604,6 +689,7 @@ module ""
             data<"form*"> : FormData
 
             do prepareView(db,params,data)
+            do dbr.apps.action.log()
             do rise_error(code,error)
         }
     }

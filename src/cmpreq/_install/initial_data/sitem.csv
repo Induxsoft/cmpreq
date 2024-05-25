@@ -11,7 +11,11 @@ TD13,Aprobar requisición,cmpreq.requisiciones
 TD14,Iniciar proceso (requisición),cmpreq.requisiciones
 TD15,Cancelar requisición,cmpreq.requisiciones
 TD16,Desaprobar requisición,cmpreq.requisiciones
-TD17A,Solicitar cotización,cmpreq.requisiciones
-TD17B,Recibir cotización,cmpreq.requisiciones
-TD18,Comparar precios,cmpreq.requisiciones
-TD18A,Generar pedidos,cmpreq.requisiciones
+TD17,Recibir cotización,cmpreq.requisiciones
+TD18,Remover cotización,cmpreq.requisiciones
+TD19,Comparar precios,cmpreq.requisiciones
+TD1A,Generar pedidos,cmpreq.requisiciones
+cmpreq.solicitudes,Solicitudes de cotización,cmpreq
+TD31,Crear solicitud de cotización,cmpreq.solicitudes
+TD32,Editar solicitud de cotización,cmpreq.solicitudes
+TD33,Cancelar solicitud de cotización,cmpreq.solicitudes
