@@ -1,0 +1,17 @@
+﻿itemid,description,itemparent
+cmpreq,Requisiciones de compra,\0
+cmpreq.consolidados,Requisiciones consolidadas,cmpreq
+TD21,Nueva requisición consolidada,cmpreq.consolidados
+TD22,Editar requisición consolidada,cmpreq.consolidados
+cmpreq.requisiciones,Requisiciones,cmpreq
+TD10,Requisiciones,cmpreq.requisiciones
+TD11,Nueva requisición,cmpreq.requisiciones
+TD12,Editar requisición,cmpreq.requisiciones
+TD13,Aprobar requisición,cmpreq.requisiciones
+TD14,Iniciar proceso (requisición),cmpreq.requisiciones
+TD15,Cancelar requisición,cmpreq.requisiciones
+TD16,Desaprobar requisición,cmpreq.requisiciones
+TD17A,Solicitar cotización,cmpreq.requisiciones
+TD17B,Recibir cotización,cmpreq.requisiciones
+TD18,Comparar precios,cmpreq.requisiciones
+TD18A,Generar pedidos,cmpreq.requisiciones

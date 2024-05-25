@@ -110,7 +110,7 @@ module "list.dk"
         @"title": "Requisiciones"
         @"buttons*": @null
         @"urlexit": "/"
-        @"main": ""
+        @"main": "TD11,TD12,TD21"
         @"actions*": dbr.apps.itemactions(@('&database'),"DET070","action","",0)
         @"reports*": dbr.apps.itemactions(@('&database'),"DET070","report","",0)
         @"jscurrentcontext": "requisiciones.list.getCurrentContext"

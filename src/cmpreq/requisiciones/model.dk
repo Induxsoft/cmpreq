@@ -503,34 +503,63 @@ module ""
 
     req.list::&db,&params
     {
-        do evaluateFilters(params)
+        do dbr.apps.action.grant("TD10")
 
+        do evaluateFilters(params)
         new data
         {
             @"requisiciones*": entity.list(db,params)
         }
         do prepareList(db,params,data)
-
         return data
+
+        exception
+        {
+            do errordet(@false)
+			code = last_error_code()
+			error = last_error()
+            do dbr.apps.action.log()
+            do rise_error(code,error)
+        }
     }
 
     req.read::&db,&params
     {
+        do dbr.apps.action.grant("TD10")
+
         new data
         {
             @"cmpreq*": entity.read(db,params)
         }
         do prepareView(db,params,data)
-
         return data
+
+        exception
+        {
+            do errordet(@false)
+			code = last_error_code()
+			error = last_error()
+            do dbr.apps.action.log()
+            do rise_error(code,error)
+        }
     }
 
     req.blank::&db,&params
     {
+        do dbr.apps.action.grant("TD10")
+
         new data {}
         do prepareView(db,params,data)
-
         return data
+
+        exception
+        {
+            do errordet(@false)
+			code = last_error_code()
+			error = last_error()
+            do dbr.apps.action.log()
+            do rise_error(code,error)
+        }
     }
 
     req.create::&db,&params,&data
@@ -540,6 +569,7 @@ module ""
         serie = trim(@@(data,"$serie"))
         folio = abs(@@(data,"#folio"))
 
+        do dbr.apps.action.pre("TD11")
         do dbr.begin(db)
 
         iblock = dbr.folios.id_block(db,@cRequisicion,serie)
@@ -595,7 +625,9 @@ module ""
         
         ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
 
+        do dbr.apps.action.pos(entity)
         do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
 
         @url_redir = path.concat(@CMP_REQUISICION, @@(entity,"$sys_pk") + "/")
 
@@ -612,6 +644,7 @@ module ""
             data<"form*"> : FormData
 
             do prepareView(db,params,data)
+            do dbr.apps.action.log()
             do rise_error(code,error)
         }
     }
@@ -620,6 +653,7 @@ module ""
     {
         @use_transaction = @false
 
+        do dbr.apps.action.pre("TD12")
         do dbr.begin(db)
 
         new cmpreq
@@ -687,7 +721,9 @@ module ""
 
         ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
 
+        do dbr.apps.action.pos(entity)
         do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
 
         exception
         {
@@ -702,6 +738,7 @@ module ""
             data<"form*"> : FormData
 
             do prepareView(db,params,data)
+            do dbr.apps.action.log()
             do rise_error(code,error)
         }
     }

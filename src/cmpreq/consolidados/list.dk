@@ -1,0 +1,11 @@
+#include "dkli.dkh"
+#!
+module "list.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "../_lib/config.dk"
+
+    @http_context<"response/headers/location"> : @CMP_REQUISICION
+    return
+}
