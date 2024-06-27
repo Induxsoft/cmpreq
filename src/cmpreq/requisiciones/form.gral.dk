@@ -153,12 +153,27 @@ module "form.dk"
                                 input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
                             }
 
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-lg-4 col-md-12 col-sm-4")
                             {
                                 label(class="form-label" "for"="txt_status"){$"Estado:"}
                                 ##
                                 do uie.dbSelect(sel_status)
                                 ##
+                            }
+                            div(class="col-lg-12")
+                            {
+                                label(class="form-label" "for"="ik_unidad_org"){$"Unidad organizacional:"}
+                                "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
+                                    "data-value"="#<to.json(dt_unidad_org)>" "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>" columns="codigo,descripcion" colcaptions="Código,Descripción"
+                                    "control-styles"="
+                                        #input_search_container, #input_description_container,
+                                        #button_search_container, #button_clear_container {
+                                            height: calc(1.5em + .5rem + 2px) !important;
+                                            padding: .25rem .5rem !important;
+                                            font-size: .875rem !important;
+                                        }
+                                    "
+                                ){$""}
                             }
                         }
 
