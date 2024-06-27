@@ -42,7 +42,7 @@ module ""
         IF(req.consolidacion,'C','D') AS tipo,
         IFNULL(req.en,0) AS en,
         IFNULL(pda.partida,'') AS partida_pre,
-        IFNULL(pto.ejercicio,'') AS ejercicio,
+        IFNULL(req.ejercicio,pto.ejercicio) AS ejercicio,
         IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
         IFNULL(pda.sys_pk,0) AS ipartida,
         IFNULL(pto.sys_pk,0) AS ipresupuesto,
@@ -52,9 +52,9 @@ module ""
         stt.const AS cstatus,
         dvs.codigo AS cdivisa
     FROM cmpreq AS req
-        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida
-        LEFT JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto
-        LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = pto.ref_unidad
+        LEFT JOIN rh_unidad_org AS uni ON uni.sys_pk = req.unidad_org
+        LEFT JOIN gop_partida AS pda ON pda.sys_pk = req.partida 
+        LEFT JOIN gop_presupuesto AS pto ON pto.sys_pk = pda.ref_presupuesto AND pto.ref_unidad=uni.sys_pk
         INNER JOIN cmpreq_status AS stt ON stt.id = req.`status`
         INNER JOIN divisa AS dvs ON dvs.sys_pk = req.`divisa`
     WHERE (req.#<@keyfield> = @_entity_id)

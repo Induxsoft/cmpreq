@@ -282,6 +282,53 @@ module "form.dk"
                                 do uie.dbSelect(sel_almacen)
                                 ##
                             }
+                            div(class="col-lg-6")
+                            {
+                                label(class="form-label" "for"="ik_unidad_org"){$"Unidad organizacional:"}
+                                "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
+                                    "data-value"="#<to.json(dt_unidad_org)>" "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>" columns="codigo,descripcion" colcaptions="Código,Descripción"
+                                    "control-styles"="
+                                        #input_search_container, #input_description_container,
+                                        #button_search_container, #button_clear_container {
+                                            height: calc(1.5em + .5rem + 2px) !important;
+                                            padding: .25rem .5rem !important;
+                                            font-size: .875rem !important;
+                                        }
+                                    "
+                                ){$""}
+                            }
+                            div(class="col-lg-2")
+                            {
+                                label(class="form-label" "for"="sel_ejercicio"){$"Ejercicio:"}
+                                select(class="form-select form-select-sm rounded-0" name="ejercicio" id="sel_ejercicio" required="true")
+                                {$""
+                                    #!
+                                    syear = lib.form('ejercicio','nm',cmpreq)
+                                    if syear == 0 { syear = @curr_year }
+
+                                    ref list_ejercicios = lib.list_years(10,5)
+                                    for i = 0; i < list.count(list_ejercicios)
+                                    {
+                                        year = list.num(list_ejercicios,i)
+                                        #$ option(value="#<year>" "#<ifstr(syear == year,'selected','')>"=""){$"#<year>"}
+                                    }
+                                }
+                            }
+                            div(class="col-lg-8")
+                            {
+                                label(class="form-label" "for"="ik_partida_pre"){$"Partida presupuestal:"}
+                                "input-key"(name="partida" id="ik_partida_pre" "data-key"="sys_pk" "data-search"="id" "data-text"="partida"
+                                    "data-value"="#<to.json(dt_partida_pre)>" "data-source"="#<@URL_BUSCAR_PARTIDA_PRE>" columns="id,partida" colcaptions="Id,Partida"
+                                    "control-styles"="
+                                        #input_search_container, #input_description_container,
+                                        #button_search_container, #button_clear_container {
+                                            height: calc(1.5em + .5rem + 2px) !important;
+                                            padding: .25rem .5rem !important;
+                                            font-size: .875rem !important;
+                                        }
+                                    "
+                                ){$""}
+                            }
                         }
 
                         hr{$""}

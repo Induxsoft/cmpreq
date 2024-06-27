@@ -5,7 +5,7 @@ module ""
     @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
-    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio,tipo,almacen"
+    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio,tipo,almacen,ejercicio,unidad_org"
     @update_fields = @sys_fields + ",fecha,flimite,periodo,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
     
     @create_exclude_fields = "sys_lastuser"
@@ -135,7 +135,7 @@ module ""
             if @@(fd,"#partida") > 0 { data<"dt_partida_pre*"> : obtenerPartida(db,@@(fd,"#partida")) }
 
             data<"list_series*"> : dbr.list(db, @qry_list_series, args)
-            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
+            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
             data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
 
             if @@(params,"#cmpreq_type") == @type_req_stock
@@ -235,35 +235,41 @@ module ""
     req.aprobar::&db,&params,&data
     {
         if @@(data,"#status") != @stt_aprobado { return }
-
-        ref req = entity.read(db,params)       
+        
+        ref req = entity.read(db,params)   
+        
+        if field.exist(req,"_detalle"){do field.remove(req,"_detalle")}
+        
         if @@(req,"$tipo") == "D"
         {
-            if dbr.num(db,"SELECT status FROM gop_presupuesto WHERE sys_pk = @ipresupuesto",req) < 3
+            if @@(req,"#ipresupuesto")>0 && dbr.num(db,"SELECT status FROM gop_presupuesto WHERE sys_pk = @ipresupuesto",req) < 3
             { do rise_error(500,"¡No es posible aprobar la requisición!\r\nEs necesario aprobar el presupuesto de la partida presupuestal.") }
-
-            if dbr.num(db,"SELECT COUNT(sys_pk) FROM gop_partida WHERE padre = @ipartida",req) > 0
+            
+            if @@(req,"#ipartida")>0 && dbr.num(db,"SELECT COUNT(sys_pk) FROM gop_partida WHERE padre = @ipartida",req) > 0
             { do rise_error(500,"No se puede afectar la requisición porque la partida presupuestal tiene sub-partidas, relacione la requisción a la sub-partida correspondiente") }
 
-            ref pre = pregop.partida.importes(db, @@(req,"#ipartida"), @@(req,"#periodo"))
-
-            if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto en el periodo seleccionado.") }
-
-            new gop_mov_data
+            if @@(req,"#ipartida")>0
             {
-                @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
-                @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
-                @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
-                @"comprometido": @@(req,"#importe") //(decimal) Monto (+\-) de la afectación.
-                @"ejercido": 0 //(decimal) Monto (+\-) de la afectación.
-                @"det": "DET070" //(string) Código DET (Data Element Type) del elemento que realiza la afectación.
-                @"det_id": @@(req,"#sys_pk") //(int) Clave primaria del elemento que realiza la afectación.
-                @"usuario": @@(@http_context, "$session/user/uid") //(string) UserId del usuario logueado que realiza la afectación.
-                @"notas": "Requisición aprobada" //(string) Descripción sobre el movimiento de afectación de presupuesto.
+                ref pre = pregop.partida.importes(db, @@(req,"#ipartida"), @@(req,"#periodo"))
+
+                if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto en el periodo seleccionado.") }
+
+                new gop_mov_data
+                {
+                    @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                    @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
+                    @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
+                    @"comprometido": @@(req,"#importe") //(decimal) Monto (+\-) de la afectación.
+                    @"ejercido": 0 //(decimal) Monto (+\-) de la afectación.
+                    @"det": "DET070" //(string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                    @"det_id": @@(req,"#sys_pk") //(int) Clave primaria del elemento que realiza la afectación.
+                    @"usuario": @@(@http_context, "$session/user/uid") //(string) UserId del usuario logueado que realiza la afectación.
+                    @"notas": "Requisición aprobada" //(string) Descripción sobre el movimiento de afectación de presupuesto.
+                }
+                // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), @@(req,"#importe")))
+                if not(pregop.partida.movimiento(db,gop_mov_data))
+                { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
             }
-            // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), @@(req,"#importe")))
-            if not(pregop.partida.movimiento(db,gop_mov_data))
-            { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
         }
     }
 
@@ -352,19 +358,34 @@ module ""
 
             @"status": new_status
         }
+        ref data_cmpreq=cmpreq
+
+        if field.exist(data,"_detalle") && trim(@@(data,"$_detalle"))!=""
+        {
+            ref cmpreq=req.genArrayDetails(data)
+            cmpreq<"status">:new_status
+        }
+        if field.exist(data,"_detalle"){do field.remove(data,"_detalle")}
 
         if new_status == @stt_aprobado
         {
             do req.aprobar(db,params,data)
+            
             cmpreq<"uaprobo"> : lib.GetPkUsr(db, @@(@http_context, "$session/user/uid"))
         }
-
         if new_status == @stt_cancelado
         {
             do req.cancelar(db,params,data)
         }
-
-        ref entity = dbr.save(db,"cmpreq",cmpreq)
+        
+        if not(isnull(@@(cmpreq,"&_detalle")))
+        {
+            ref entity = entity.update(db,params,cmpreq)
+            ref cmpreq=data_cmpreq
+            cmpreq<"sys_recver">:@@(entity,"#sys_recver")
+        }
+        ref entity = dbr.save(db,"cmpreq",cmpreq)    
+        
 
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
@@ -547,6 +568,7 @@ module ""
         {
             @"cmpreq*": entity.read(db,params)
         }
+        
         do prepareView(db,params,data)
         return data
 
@@ -598,9 +620,10 @@ module ""
         new cmpreq
         {
             @"sys_user": @@(@http_context, "$session/user/uid")
-
+            @"unidad_org":@@(data,"#unidad_org")
             @"partida": @@(data,"#partida")
             @"periodo": @@(data,"#periodo")
+            @"ejercicio":@@(data,"#ejercicio")
             @"referencia": referencia
             @"folio": @@(infoFolio,"#sys_pk")
             @"fecha*": str2dt(trim(@@(data,"$fecha")))
@@ -615,15 +638,17 @@ module ""
         }
 
         if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
-        
+        if @@(cmpreq,"#unidad_org")<1{do field.remove(cmpreq,"unidad_org")}
+        if @@(cmpreq,"#ejercicio")<1{do field.remove(cmpreq,"ejercicio")}
+
         if @@(data,"#tipo") == @type_req_gop
         {
             cmpreq<"notas"> : "Requisición directa para gastos de operación."
         }
         if @@(data,"#tipo") == @type_req_stock
         {
-            do field.remove(cmpreq,"partida")
-            do field.remove(cmpreq,"periodo")
+            if @@(cmpreq,"#partida")<1{do field.remove(cmpreq,"partida")}
+            if @@(cmpreq,"#periodo")<1{do field.remove(cmpreq,"periodo")}
 
             cmpreq<"notas"> : "Requisición directa para mantenimiento de stock."
             cmpreq<"almacen"> : @@(data,"#almacen")
@@ -664,14 +689,8 @@ module ""
             do rise_error(code,error)
         }
     }
-
-    req.update::&db,&params,&data
+    req.genArrayDetails::&data
     {
-        @use_transaction = @false
-
-        do dbr.apps.action.pre("TD12")
-        do dbr.begin(db)
-
         new cmpreq
         {
             @"sys_timestamp*": now()
@@ -734,6 +753,17 @@ module ""
                 @"fields": "producto,cantidad,unidad,precio,impuestos,excluido,notas"
             }
         }
+
+        return cmpreq
+    }
+    req.update::&db,&params,&data
+    {
+        @use_transaction = @false
+
+        do dbr.apps.action.pre("TD12")
+        do dbr.begin(db)
+
+        ref cmpreq=req.genArrayDetails(data)
 
         ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
 

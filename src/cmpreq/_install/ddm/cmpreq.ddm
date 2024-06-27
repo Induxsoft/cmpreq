@@ -745,7 +745,9 @@ model "erp.requisiciones"
     {
         @"fecha" date required // Fecha formal de elaboración
         @"flimite" datetime // Fecha y hora límite para completarla
+        @"unidad_org" ref:"rh_unidad_org"
         @"partida" ref:"gop_partida"
+        @"ejercicio" int
         @"periodo" int
         @"referencia" string(32) unique required
         @"folio" ref:"foliosdocumentos" unique required

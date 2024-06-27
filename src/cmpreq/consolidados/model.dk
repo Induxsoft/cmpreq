@@ -64,7 +64,7 @@ module ""
             }
 
             data<"list_series*"> : dbr.list(db, @qry_list_series, args)
-            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id <= 10",@null)
+            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
             data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
         }
         else

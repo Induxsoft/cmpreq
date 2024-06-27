@@ -166,7 +166,11 @@ var requisiciones =
             if (btn_submit) btn_submit.addEventListener("click", () => { this.save() });
             ik_producto.addEventListener("change",(data) => { this.agregarProducto(data) });
             btn_add_row.addEventListener("click", () => { this.table.AddRow() });
-            btn_del_row.addEventListener("click", () => { this.table.DeleteCurrentRow() });
+            btn_del_row.addEventListener("click", () => 
+            { 
+                this.table.DeleteCurrentRow();
+                requisiciones.edit.sumarTotales();
+            });
 
             this.table.setInputKey("codigo",ik_producto);
             this.table.setInputKey("descripcion",ik_producto);
@@ -227,7 +231,16 @@ var requisiciones =
         changeStatus(status)
         {
             if (!this.url_change_status) return;
-
+            const txt_detalle = document.getElementById("txt_detalle");
+            let _detalle = (this.table?.DataArray??[]).filter((prod) => { return Object.entries(prod??{}).length >= 9 });
+            
+            if(_detalle.length<1 && status==10)
+            {
+                alert("Debe agregar productos en la tabla.");
+                return;
+            }
+            if(status==10)txt_detalle.value = JSON.stringify(_detalle);
+            
             let fd = new FormData(this.form);
             fd.append("status",status);
             let endpoint = this.url_change_status.replace("{ireq}",fd.get("sys_pk"));
