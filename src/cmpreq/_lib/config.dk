@@ -36,6 +36,9 @@ module
 
 	@default_max_rows = 250 // limite de registros para las vistas de lista
 
+	//bitacora
+	@URL_BITACORA="/!/webshell/log/DET070/@guid/"
+
 	//* ======================================== [ _STATIC RESOURCES ]
 	@CSS_MAIN = "/$/cmpreq/css/main.css"
 	@JS_MAIN = "/$/cmpreq/js/main.js"

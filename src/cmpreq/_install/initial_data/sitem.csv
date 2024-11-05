@@ -19,3 +19,5 @@ cmpreq.solicitudes,Solicitudes de cotización,cmpreq
 TD31,Crear solicitud de cotización,cmpreq.solicitudes
 TD32,Editar solicitud de cotización,cmpreq.solicitudes
 TD33,Cancelar solicitud de cotización,cmpreq.solicitudes
+TD40,Ver mensajes de requisiciones,cmpreq.requisiciones
+TD41,Publicar mensajes de requisiciones,cmpreq.requisiciones

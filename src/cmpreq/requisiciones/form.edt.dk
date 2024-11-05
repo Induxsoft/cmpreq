@@ -254,6 +254,10 @@ module "form.dk"
                 requisiciones.edit.divAlerts = "#tbl_alerts";
                 requisiciones.edit.init();
                 InduxsoftNumberFields.Init();
+
+                
+                _bitacora._url="#<@URL_BITACORA>";
+                _bitacora.EnableLog("#<@("$./cmpreq/sys_guid")>");
             });
 		'}
     }
