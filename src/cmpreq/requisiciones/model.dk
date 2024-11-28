@@ -119,6 +119,20 @@ module ""
         data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
     }
 
+    setPrintTitles::&db,&data
+    {
+        using data
+        {
+            member @"titles"
+            {
+                @"title": dbr.vars.getd(db,"FXCA108","")
+                @"subtitle": dbr.vars.getd(db,"FXCA109","")
+                @"subtitle_2": dbr.vars.getd(db,"FXCA110","")
+                @"footer": dbr.vars.getd(db,"FXCA111","")
+            }
+        }
+    }
+
     prepareView::&db,&params,&data
     {
         isNew = (@@(params,"$_entity_id") == "_new")
@@ -548,6 +562,8 @@ module ""
             @"requisiciones*": entity.list(db,params)
         }
         do prepareList(db,params,data)
+        do setPrintTitles(db,data)
+        
         return data
 
         exception

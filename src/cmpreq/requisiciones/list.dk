@@ -1,6 +1,6 @@
 #include "dkli.dkh"
 #!
-module "list.dk"
+module "Requisiciones"
 {
     #include "functions.dkh"
     #include "serialize.dkh"
@@ -14,6 +14,7 @@ module "list.dk"
     ref @_GET = ifnull(@("&parameters"),record.create())
     ref requisiciones = ifnull(@("&./requisiciones"),list.create())
     ref list_status = ifnull(@("&./list_status"),list.create())
+    ref titles = ifnull(@("&./titles"),record.create())
 
 	@_entities_type = @("$parameters/_entities_type")
 	table_id = "tbl_"+@_entities_type
@@ -117,13 +118,14 @@ module "list.dk"
     }
 
     #$
-    div(class="container-fluid p-0")
+    div(class="container-fluid" id="view")
     {
-        #! do uie.printV12FormBar(nav_config)
-
-        #$ div(id="work_area" class="container-section p-2 pt-0")
+        // Filtros y acciones
+        section(id="top_area")
         {
-            p{$"#<@('$error/message')>"}
+            #!
+            do uie.printV12FormBar(nav_config)
+            #$
 
             form(action="./" method="GET" id="form_filter" class="no-print mb-2")
             {
@@ -182,17 +184,63 @@ module "list.dk"
                     }
                 }
             }
-            #! do uie.dbeditable(table_definition,table_id)
         }
+        // Contenido principal
+        section(id="work_area")
+        {
+            div(class="show-on-print")
+            {
+                p(class="text-center my-0"){$"#<@@(titles,'$title')>"}
+                p(class="text-center my-0"){$"#<@@(titles,'$subtitle')>"}
+                p(class="text-center my-0"){$"#<@@(titles,'$subtitle_2')>"}
 
-		#$
-        script(src="#<@JS_REQUISICIONES>"){$""}
-		script(type="text/javascript")
-		{$'
-            document.addEventListener("DOMContentLoaded", () => {
-                requisiciones.list.tableId = "#<table_id>";
-                requisiciones.list.init();
-            });
-		'}
+                div(class="row")
+                {
+                    div(class="col-3 text-start")
+                    {
+                        small(class="d-block"){ $"#<cut(@('$http/session/user/name'),25)>" }
+                        small(class="d-block"){ $"#<date_str(now(),'dd/MMM/yyyy')>" }
+                    }
+                    div(class="col-6 text-center")
+                    {
+                        h4(class=""){$"Informe general de #<@_entities_type>"}
+                    }
+                    div(class="col-3 text-end")
+                    {
+                        small(class="d-block" id="lbl_filter_1"){$""}
+                        small(class="d-block" id="lbl_filter_2"){$""}
+                        small(class="d-block" id="lbl_filter_3"){$""}
+                    }
+                }
+            }
+
+            #!
+            do uie.dbeditable(table_definition,table_id)
+            #$
+
+            div(class="show-on-print"){p(class="fixed-bottom text-center my-1"){$"#<@@(titles,'$footer')>"}}
+        }
+        // Resúmenes y datos al pie
+        section(id="bottom_area")
+        {
+            //////////////////////////////////////////////////////////////////
+            div(id="_custom_area")
+            {
+                script(src="#<@JS_REQUISICIONES>"){$""}
+                script(type="text/javascript")
+                {$' 
+                    document.addEventListener("DOMContentLoaded", () => {
+                        requisiciones.list.tableId = "#<table_id>";
+                        requisiciones.list.init();
+
+                        // Script injection
+                        #<@@(@crud_context,"script")>
+                    });
+                '}
+            }
+        }
     }
+    #!
+
+    do @context.end()
 }
