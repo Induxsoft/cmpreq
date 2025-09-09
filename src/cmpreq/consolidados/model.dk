@@ -34,7 +34,7 @@ module ""
                 AND NOT IFNULL(req.consolidacion,0)
                 AND req.en IS NULL
                 AND req.`status` = 10
-                AND (req.referencia LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
+                AND (req.referencia = @search OR pda.partida LIKE CONCAT('%',@search,'%'))
             )"
         }
 
@@ -135,6 +135,7 @@ module ""
             @"status": @@(data,"#status")
             @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
             @"consolidacion": @true
+            @"tipo": @type_req_consl
         }
 
         if trim(@@(data,"$flimite")) != "" { cmpcon<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }

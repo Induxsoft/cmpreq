@@ -1,6 +1,6 @@
 #include "dkli.dkh"
 #!
-module "form.dk"
+module "form.edt.dk"
 {
     #include "functions.dkh"
     #include "serialize.dkh"
@@ -18,6 +18,11 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
+    if @@(cmpreq,"$tipo") == "C" {
+        @http_context<"response/headers/location"> : path.concat(@CMP_CONSOLIDADO,@_entity_id)+"/"
+        return
+    }
+
     @curr_status = @@(cmpreq,"#status")
     @show_btn_xaprobar = (@curr_status == @stt_borrador)
     @show_btn_aprobar = (@curr_status == @stt_xaprobar)
@@ -26,7 +31,6 @@ module "form.dk"
     @enable_editing = (@curr_status == @stt_borrador || @curr_status == @stt_xaprobar)
 
     in_consol = (@@(cmpreq,"#en") > 0)
-    
     if in_consol 
     {
         @show_btn_xaprobar = @false
@@ -38,8 +42,7 @@ module "form.dk"
 
     // ["En proceso", "Completa", "Incompleta"]
     if containsword(@curr_status, "20,30,31") && not(in_consol) {
-        endpoint = path.concat(@CMP_SOLCOT,@_entity_id)
-        endpoint = path.concat(endpoint,"cmp-in-process")
+        endpoint = replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
         /* new context
         {
             @"entity*": cmpreq

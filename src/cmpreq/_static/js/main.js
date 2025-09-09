@@ -5,10 +5,18 @@
  */
 function trigger(elementOrSelector,eventName)
 {
-    if (!elementOrSelector) return;
+    if (!elementOrSelector || !eventName) return;
 
-    const element = (typeof elementOrSelector === "string") ? document.querySelector(elementOrSelector) : elementOrSelector;
-    const event = new Event(eventName);
+    const element = (typeof elementOrSelector === 'string') ? document.querySelector(elementOrSelector) : elementOrSelector;
+    if (!element) {
+        console.error("Elemento no encontrado.");
+        return
+    }
+
+    const event = new Event(eventName, {
+        bubbles: true,
+        cancelable: true
+    });
     element.dispatchEvent(event);
 }
 

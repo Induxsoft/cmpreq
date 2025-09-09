@@ -1,0 +1,272 @@
+#include "dkli.dkh"
+#!
+module "form.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+	#include "../_lib/icons.dk"
+    #include "../_lib/lib.dk"
+
+    do @context.begin(@crud_context)
+
+    ref @_GET = ifnull(@("&parameters"),record.create())
+    ref cmpreq = ifnull(@("&./cmpreq"),record.create())
+    ref dt_unidad_org = ifnull(@("&./dt_unidad_org"),record.create())
+    ref dt_partida_pre = ifnull(@("&./dt_partida_pre"),record.create())
+    ref list_series =ifnull(@("&./list_series"),list.create())
+    ref list_status = ifnull(@("&./list_status"),list.create())
+    ref list_divisas = ifnull(@("&./list_divisas"),list.create())
+
+	@_entities_type = @("$parameters/_entities_type")
+	@_entity_id = @("$parameters/_entity_id")
+
+    new sel_serie
+    {
+        @"datatable*": list_series
+        @"id": "sel_serie"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"style": "max-width:6rem;"
+            @"name": "serie"
+            @"required": ""
+        }
+        @"value_field": "serie"
+        @"text_field": "serie"
+        new member "attr_options"
+        {
+            @"data-iblock": "#<@@(row,'#sys_pk')>"
+        }
+        @"selected": lib.form('serie','nm',cmpreq)
+    }
+
+    new sel_status
+    {
+        @"datatable*": list_status
+        @"id": "sel_status"
+        member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "status"
+            @"required": ""
+        }
+        @"value_field": "id"
+        @"text_field": "const"
+        @"selected": field.dnum(ifnull(@("&./form"),cmpreq),"status",1)
+    }
+
+    new sel_divisa
+    {
+        @"datatable*": list_divisas
+        @"id": "sel_divisa"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "divisa"
+            @"required": ""
+        }
+        @"value_field": "sys_pk"
+        @"text_field": "text"
+        new member "attr_options"
+        {
+            @"data-codigo": "#<toupper(@@(row,'$codigo'))>"
+            @"data-tcambio": "#<@@(row,'#tcambio')>"
+        }
+        @"selected": lib.form('divisa','nm',cmpreq)
+    }
+
+    new sel_periodo
+    {
+        @"datatable*": from.json('[
+            {"id":"1","const":"Enero"},
+            {"id":"2","const":"Febrero"},
+            {"id":"3","const":"Marzo"},
+            {"id":"4","const":"Abril"},
+            {"id":"5","const":"Mayo"},
+            {"id":"6","const":"Junio"},
+            {"id":"7","const":"Julio"},
+            {"id":"8","const":"Agosto"},
+            {"id":"9","const":"Septiembre"},
+            {"id":"10","const":"Octubre"},
+            {"id":"11","const":"Noviembre"},
+            {"id":"12","const":"Diciembre"},
+            {"id":"13","const":"Extraordinario"},
+        ]')
+        @"id": "sel_periodo"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "periodo"
+        }
+        @"value_field": "id"
+        @"text_field": "const"
+        @"selected": lib.form('periodo','nm',cmpreq)
+    }
+
+    new nav_config
+    {
+        @"title": "Nueva requisición"
+        @"buttons*": @null
+        @"urlexit": "../"
+        member @"hidden"
+        {
+            @"print": @true
+            @"refresh": @true
+        }
+    }
+
+    #$
+    div(class="container")
+    {
+        link(href="#<@CSS_MAIN>" rel="stylesheet")
+
+        #!
+        do uie.printV12FormBar(nav_config)
+        #$
+
+        div(id="work_area" class="container-section")
+        {
+            div(class="#<ifstr(@('$error/message')!='','alert alert-danger','')> overflow-auto"){$"#<@('$error/message')>"}
+
+            form(method="POST" action="./?cmpreq_type=#<@type_req_gop>" id="form-new-cmpreq")
+            {
+                input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
+                input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
+                input(type="hidden" name="tipo" value="#<@type_req_gop>")
+
+                div(class="row justify-content-center")
+                {
+                    div(class="col-lg-8 col-md-10 col-sm-12")
+                    {
+                        div(class="row gx-2")
+                        {
+                            div(class="col-lg-10 col-md-9 col-sm-9")
+                            {
+                                label(class="form-label" "for"="ik_unidad_org"){$"Unidad organizacional:"}
+                                "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
+                                    "data-value"="#<to.json(dt_unidad_org)>" "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>" columns="codigo,descripcion" colcaptions="Código,Descripción"
+                                    "control-styles"="
+                                        #input_search_container, #input_description_container,
+                                        #button_search_container, #button_clear_container {
+                                            height: calc(1.5em + .5rem + 2px) !important;
+                                            padding: .25rem .5rem !important;
+                                            font-size: .875rem !important;
+                                        }
+                                    "
+                                ){$""}
+                            }
+
+                            div(class="col-lg-2 col-md-3 col-sm-3")
+                            {
+                                label(class="form-label" "for"="sel_ejercicio"){$"Ejercicio:"}
+                                select(class="form-select form-select-sm rounded-0" name="ejercicio" id="sel_ejercicio" required="true")
+                                {$""
+                                    #!
+                                    syear = lib.form('ejercicio','nm',cmpreq)
+                                    if syear == 0 { syear = @curr_year }
+
+                                    ref list_ejercicios = lib.list_years(10,5)
+                                    for i = 0; i < list.count(list_ejercicios)
+                                    {
+                                        year = list.num(list_ejercicios,i)
+                                        #$ option(value="#<year>" "#<ifstr(syear == year,'selected','')>"=""){$"#<year>"}
+                                    }
+                                }
+                            }
+
+                            div(class="col-lg-10 col-md-9 col-sm-9")
+                            {
+                                label(class="form-label" "for"="ik_partida_pre"){$"Partida presupuestal:"}
+                                "input-key"(name="partida" id="ik_partida_pre" required="true" "data-key"="sys_pk" "data-search"="id" "data-text"="partida"
+                                    "data-value"="#<to.json(dt_partida_pre)>" "data-source"="#<@URL_BUSCAR_PARTIDA_PRE>" columns="id,partida" colcaptions="Id,Partida"
+                                    "control-styles"="
+                                        #input_search_container, #input_description_container,
+                                        #button_search_container, #button_clear_container {
+                                            height: calc(1.5em + .5rem + 2px) !important;
+                                            padding: .25rem .5rem !important;
+                                            font-size: .875rem !important;
+                                        }
+                                    "
+                                ){$""}
+                            }
+
+                            div(class="col-lg-2 col-md-3 col-sm-3")
+                            {
+                                label(class="form-label" "for"="sel_periodo"){$"Periodo:"}
+                                ##
+                                do uie.dbSelect(sel_periodo)
+                                ##
+                            }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="txt_referencia"){$"Referencia:"}
+                                div(class="input-group input-group-sm")
+                                {
+                                    ##
+                                    do uie.dbSelect(sel_serie)
+                                    ##
+                                    input(class="form-control form-control-sm rounded-0 text-end" type="number" name="folio" value="#<lib.form('folio','num',cmpreq)>" id="txt_folio" min="1" step="1" placeholder="<A>")
+                                    button(class="btn btn-light btn-sm rounded-0 border" type="button" id="btn_get_folio" title="Obtener folio disponible para la serie seleccionada"){$"#<@ICON_HDOTS>"}
+                                }
+                            }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
+                                input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpreq)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
+                            }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
+                                input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpreq)>" id="txt_flimite" title="Fecha y hora límite para completarla")
+                            }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="txt_divisa"){$"Divisa:"}
+                                ##
+                                do uie.dbSelect(sel_divisa)
+                                ##
+                            }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}
+                                input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
+                            }
+
+                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            {
+                                label(class="form-label" "for"="txt_status"){$"Estado:"}
+                                ##
+                                do uie.dbSelect(sel_status)
+                                ##
+                            }
+                        }
+
+                        div(class="text-end mt-2")
+                        {
+                            button(class="btn btn-primary btn-sm rounded-0" type="submit"){$"#<@ICON_SAVE> Continuar"}
+                        }
+                    }
+                }
+            }
+        }
+
+        #$
+        script(src="#<@JS_MAIN>"){$""}
+        script(src="#<@JS_REQUISICIONES>"){$""}
+		script(type="text/javascript")
+		{$'
+            document.addEventListener("DOMContentLoaded", () => {
+                requisiciones.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
+                requisiciones.form.init();
+                InduxsoftNumberFields.Init();
+            });
+		'}
+    }
+}

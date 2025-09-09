@@ -1,8 +1,8 @@
 #include "dkli.dkh"
 #!
-module ""
+module "RequisicionesController"
 {
-    switch @@(@http_context,"$request/get/_view")
+    switch @@(params,"$_view")
     {
         case "buscar-unidad-org"
         {
@@ -36,19 +36,10 @@ module ""
         }
         default
         {
-            _entity_id = @@(@http_context,"$request/get/_entity_id")
-            cmpreq_type = @@(@http_context,"#request/get/cmpreq_type")
+            _entity_id = @@(params,"$_entity_id")
 
-            if cmpreq_type == @type_req_gop { @form_view = "form.new.dk" }
-            else if cmpreq_type == @type_req_stock { @form_view = "form.stock.dk" }
-            else if cmpreq_type == @type_req_gral { @form_view = "form.gral.dk" }
-            else if cmpreq_type == @type_req_consl {
-                @http_context<"response/headers/location"> : path.concat(@CMP_CONSOLIDADO,"_new")
-                return
-            }
-            else { @form_view = "choose.dk" }
-            
-            if _entity_id != "_new" { @form_view = "form.edt.dk" }
+            if _entity_id == "_new" { @form_view = "form.new.dk" }
+            else { @form_view = "form.edt.dk" }
 
             point @list to req.list
             point @read to req.read

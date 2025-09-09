@@ -18,6 +18,11 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
+    if @@(cmpcon,"$tipo") == "D" {
+        @http_context<"response/headers/location"> : path.concat(@CMP_REQUISICION,@_entity_id)+"/"
+        return
+    }
+
     @curr_status = @@(cmpcon,"#status")
     @show_btn_xaprobar = (@curr_status == @stt_borrador)
     @show_btn_aprobar = (@curr_status == @stt_xaprobar)
@@ -29,8 +34,7 @@ module "form.dk"
 
     // ["En proceso", "Completa", "Incompleta"]
     if containsword(@curr_status, "20,30,31") {
-        endpoint = path.concat(@CMP_SOLCOT,@_entity_id)
-        endpoint = path.concat(endpoint,"cmp-in-process")
+        endpoint = replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
         /* new context
         {
             @"entity*": cmpcon

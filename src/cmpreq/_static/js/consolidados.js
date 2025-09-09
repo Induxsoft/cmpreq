@@ -139,7 +139,7 @@ var consolidados =
             txt_requisiciones.value = _reqsId.join(",");
             txt_detalle.value = JSON.stringify(_detalle);
             
-            trigger(this.form,"submit");
+            this.form.submit();
         },
 
         changeStatus(status)

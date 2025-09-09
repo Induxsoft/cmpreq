@@ -148,17 +148,17 @@ module ""
             if @@(fd,"#unidad_org") > 0 { data<"dt_unidad_org*"> : obtenerUnidad(db,@@(fd,"#unidad_org")) }
             if @@(fd,"#partida") > 0 { data<"dt_partida_pre*"> : obtenerPartida(db,@@(fd,"#partida")) }
 
-            data<"list_series*"> : dbr.list(db, @qry_list_series, args)
-            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
-            data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
-
-            if @@(params,"#cmpreq_type") == @type_req_stock
+            using data
             {
-                data<"list_almacenes*"> : dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM almacen WHERE NOT IFNULL(sys_deleted,0)",@null)
-                data<"list_clases*"> : dbr.list(db,"SELECT id, const FROM cclaseproducto",@null)
-                data<"list_lineas*"> : list.create()
-                data<"list_marcas*"> : dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM marca WHERE NOT IFNULL(sys_deleted,0)",@null)
-                data<"list_deptos*"> : dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM departamento WHERE NOT IFNULL(sys_deleted,0)",@null)
+                @"list_tipos*": dbr.list(db,"SELECT * FROM cmpreq_type",@null)
+                @"list_series*": dbr.list(db, @qry_list_series, args)
+                @"list_status*": dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
+                @"list_divisas*": dbr.list(db, @qry_list_divisas, @null)
+                @"list_almacenes*": dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM almacen WHERE NOT IFNULL(sys_deleted,0)",@null)
+                @"list_clases*": dbr.list(db,"SELECT id, const FROM cclaseproducto",@null)
+                @"list_lineas*": list.create()
+                @"list_marcas*": dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM marca WHERE NOT IFNULL(sys_deleted,0)",@null)
+                @"list_deptos*": dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM departamento WHERE NOT IFNULL(sys_deleted,0)",@null)
             }
         }
         else
@@ -398,8 +398,7 @@ module ""
             ref cmpreq=data_cmpreq
             cmpreq<"sys_recver">:@@(entity,"#sys_recver")
         }
-        ref entity = dbr.save(db,"cmpreq",cmpreq)    
-        
+        ref entity = dbr.save(db,"cmpreq",cmpreq)
 
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
@@ -636,48 +635,72 @@ module ""
         new cmpreq
         {
             @"sys_user": @@(@http_context, "$session/user/uid")
+            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
             @"unidad_org":@@(data,"#unidad_org")
+            @"ejercicio":@@(data,"#ejercicio")
             @"partida": @@(data,"#partida")
             @"periodo": @@(data,"#periodo")
-            @"ejercicio":@@(data,"#ejercicio")
+            @"tipo": @@(data,"#tipo")
             @"referencia": referencia
             @"folio": @@(infoFolio,"#sys_pk")
-            @"fecha*": str2dt(trim(@@(data,"$fecha")))
-            @"flimite*": @null
+            @"fecha": @@(data,"$fecha")
+            @"flimite": @@(data,"$flimite")
             @"subtotal": 0
             @"impuestos": 0
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
-            @"tipo": @@(data,"#tipo")
+            @"almacen": @@(data,"#almacen")
         }
 
-        if trim(@@(data,"$flimite")) != "" { cmpreq<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
-        if @@(cmpreq,"#unidad_org")<1{do field.remove(cmpreq,"unidad_org")}
-        if @@(cmpreq,"#ejercicio")<1{do field.remove(cmpreq,"ejercicio")}
+        if @@(cmpreq,"$flimite") == "" { do field.remove(cmpreq,"flimite") }
+        if @@(cmpreq,"#tipo") <= 0 { do rise_error(511,"No se ha indicado el tipo de requisición.") }
+        if @@(cmpreq,"#unidad_org") < 1 { do rise_error(512,"No se ha indicado la unidad organizacional.") }
+        if @@(cmpreq,"#almacen") < 1 { do rise_error(513,"No se ha indicado el almacén.") }
+        if @@(cmpreq,"#divisa") < 1 { do rise_error(514,"No se ha indicado una divisa.") }
+        if @@(cmpreq,"#tcambio") < 1 { do rise_error(515,"Debe especificar un tipo de cambio válido.") }
+        if @@(cmpreq,"#status") < 0 { cmpreq<"status"> : @stt_borrador }
+        if @@(cmpreq,"#ejercicio") < 1 { do field.remove(cmpreq,"ejercicio") }
+        if @@(cmpreq,"#partida") < 1 { do field.remove(cmpreq,"partida") }
+        if @@(cmpreq,"#periodo") < 1 { do field.remove(cmpreq,"periodo") }
 
-        if @@(data,"#tipo") == @type_req_gop
+        url_redir = path.concat(@CMP_REQUISICION, "/{_entity_id}/")
+        switch @@(data,"#tipo")
         {
-            cmpreq<"notas"> : "Requisición directa para gastos de operación."
+            case @type_req_gop
+            {
+                cmpreq<"notas"> : "Requisición directa para gastos de operación."
+                break
+            }
+            case @type_req_stock
+            {
+                cmpreq<"notas"> : "Requisición directa para mantenimiento de stock."
+                break
+            }
+            case @type_req_gral
+            {
+                cmpreq<"notas"> : "Requisición directa para previsión en general."
+                break
+            }
+            case @type_req_consl
+            {
+                cmpreq<"notas"> : "Requisición consolidada."
+
+                data<"add-products"> : @false
+                data<"affect-gop"> : @false
+                do field.remove(cmpreq,"ejercicio")
+                do field.remove(cmpreq,"partida")
+                do field.remove(cmpreq,"periodo")
+
+                url_redir = path.concat(@CMP_CONSOLIDADO, "/{_entity_id}/")
+                break
+            }
         }
-        if @@(data,"#tipo") == @type_req_stock
+
+        if parse.bool(@@(data,"$add-products"))
         {
-            if @@(cmpreq,"#partida")<1{do field.remove(cmpreq,"partida")}
-            if @@(cmpreq,"#periodo")<1{do field.remove(cmpreq,"periodo")}
-
-            cmpreq<"notas"> : "Requisición directa para mantenimiento de stock."
-            cmpreq<"almacen"> : @@(data,"#almacen")
-
             ref filters = record.copy(data,"almacen,fil_clase,fil_linea,fil_marca,fil_depto,fil_gv,fil_prod_below,fil_prod_until")
             do req.setStockKeeping(db,filters,cmpreq)
-        }
-        if @@(data,"#tipo") == @type_req_gral
-        {
-            do field.remove(cmpreq,"partida")
-            do field.remove(cmpreq,"periodo")
-
-            cmpreq<"notas"> : "Requisición directa para previsión en general."
         }
         
         ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
@@ -686,7 +709,7 @@ module ""
         do dbr.commit(db)
         do dbr.apps.action.ext(entity)
 
-        @url_redir = path.concat(@CMP_REQUISICION, @@(entity,"$sys_pk") + "/")
+        @url_redir = replace(url_redir, "{_entity_id}", @@(entity,"$sys_pk"))
 
         exception
         {
@@ -705,6 +728,7 @@ module ""
             do rise_error(code,error)
         }
     }
+
     req.genArrayDetails::&data
     {
         new cmpreq
@@ -772,6 +796,7 @@ module ""
 
         return cmpreq
     }
+
     req.update::&db,&params,&data
     {
         @use_transaction = @false
@@ -779,8 +804,7 @@ module ""
         do dbr.apps.action.pre("TD12")
         do dbr.begin(db)
 
-        ref cmpreq=req.genArrayDetails(data)
-
+        ref cmpreq = req.genArrayDetails(data)
         ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
 
         do dbr.apps.action.pos(entity)

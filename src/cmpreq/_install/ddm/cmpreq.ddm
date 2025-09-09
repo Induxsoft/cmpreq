@@ -741,7 +741,7 @@ model "erp.requisiciones"
         */
     }
     // Requisiciones
-    entity "cmpreq": "TableModel"
+    entity "cmpreq" : "TableModel"
     {
         @"fecha" date required // Fecha formal de elaboración
         @"flimite" datetime // Fecha y hora límite para completarla
@@ -765,7 +765,7 @@ model "erp.requisiciones"
         @"almacen" ref:"almacen"
     }
     // Detalle de la requisición
-    entity "dcmpreq": "TableModel"
+    entity "dcmpreq" : "TableModel"
     {
         @"ref_req" ref:"cmpreq" required
         @"producto" ref:"producto" required
@@ -786,7 +786,7 @@ model "erp.requisiciones"
     // }
 
     //Solicitud de cotización a proveedor
-    entity "solcot": "TableModel"
+    entity "solcot" : "TableModel"
     {
         @"referencia" string(32) unique required
         @"folio" ref:"foliosdocumentos" unique required
@@ -803,6 +803,12 @@ model "erp.requisiciones"
         @"ucreo" ref:"tuser" required // usuario que creó la solicitud de cotización
         @"urecibio" ref:"tuser" // usuario que recibió (vinculó) la cotización
         @"ucancelo" ref:"tuser" // usuario que canceló la solicitud de cotización
+    }
+
+    entity "unidad_almacen" : "TableModel"
+    {
+        @"unidad_org" ref:"rh_unidad_org" required
+        @"almacen" ref:"almacen" required
     }
 
     //* ======================================== [ ... ]

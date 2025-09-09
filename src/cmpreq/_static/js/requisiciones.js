@@ -222,10 +222,9 @@ var requisiciones =
 
             const txt_detalle = document.getElementById("txt_detalle");
             let _detalle = (this.table?.DataArray??[]).filter((prod) => { return Object.entries(prod??{}).length >= 9 });
-
             txt_detalle.value = JSON.stringify(_detalle);
 
-            trigger(this.form,"submit");
+            this.form.submit();
         },
 
         changeStatus(status)
