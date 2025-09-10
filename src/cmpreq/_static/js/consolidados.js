@@ -1,14 +1,19 @@
 var consolidados =
 {
     form: {
-        url_get_fultimo:"", url_exit:"",
+        url_get_fultimo:"", url_get_unialm:"", url_exit:"",
 
         init()
         {
             const btn_get_folio = document.getElementById("btn_get_folio");
+            const ik_unidad_org = document.getElementById("ik_unidad_org");
             const sel_divisa = document.getElementById("sel_divisa");
             
             if (btn_get_folio) btn_get_folio.addEventListener("click", () => { this.getFolio() });
+            if (ik_unidad_org) ik_unidad_org.change_event = (data) => {
+                let params = {u:Number(data?.sys_pk??0)}
+                this.fillSelect("sel_almacen","sys_pk","descripcion",this.url_get_unialm,params);
+            };
             if (sel_divisa) sel_divisa.addEventListener("change", (event) => { this.setTipoCambio(event.target) });
 
             this.setKeyboardShortcuts();
@@ -62,6 +67,36 @@ var consolidados =
             const txt_tcambio = document.getElementById("txt_tcambio");
             
             txt_tcambio.value = Number(opt_divisa.getAttribute("data-tcambio") ?? "1");
+        },
+
+        fillSelect(id, kf, vf, url, params={}, fo={})
+        {
+            const select = document.getElementById(id);
+
+            let endpoint = InduxsoftCrudlModel.UrlReplace(url,params);
+            let selected = select.value ?? "";
+
+            fetch(endpoint).then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
+                
+                select.innerHTML = "";
+
+                if (Object.keys(fo).length >= 2) data.unshift(fo);
+
+                data.forEach(obj => {
+                    const option = document.createElement("option");
+                    option.value = obj[kf];
+                    option.text = obj[vf];
+                    if (obj[kf] === selected) option.selected = true;
+
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error(error));
         },
     },
 

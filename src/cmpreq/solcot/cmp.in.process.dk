@@ -64,6 +64,12 @@ module "form.dk"
         }
     }
 
+    periodo = ""
+    go foreach.lobj(value:itm) with(@periodos)
+    {
+        if @@(itm,"#id") == @@(entity,'#periodo') { periodo = @@(itm,"$const") }
+    }
+
     header_act::
     {
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
@@ -76,9 +82,7 @@ module "form.dk"
         if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
         if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
     }
-
     point general_act to header_act
-
     new nav_config
     {
         @"title": @@(entity,"$referencia")
@@ -88,7 +92,7 @@ module "form.dk"
     }
 
     #$
-    div(class="container")
+    div(class="container-lg")
     {
         link(href="#<@CSS_MAIN>" rel="stylesheet")
 
@@ -104,30 +108,35 @@ module "form.dk"
 
                 div(class="row #<ifstr(not(@consolidacion),'','d-none')>")
                 {
-                    div(class="col-lg-5 col-md-5 col-sm-12 text-md-start d-lg-flex align-items-center justify-content-lg-start gap-1")
+                    div(class="col-12 col-md-4 d-md-flex align-items-center justify-content-md-start gap-1")
                     {
-                        h6(class="my-0"){$"Unidad Organizacional:"}
-                        p(class="my-0"){$"#<@@(entity,'$unidad_org')>"}
+                        h6(class="my-0"){"Tipo:"}
+                        p(class="my-0"){"#<@@(entity,'$ctipo')>"}
                     }
-                    div(class="col-lg-2 col-md-2 col-sm-12 text-md-center d-lg-flex align-items-center justify-content-lg-center gap-1")
+                    div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-end gap-1")
                     {
-                        h6(class="my-0"){$"Ejercicio:"}
-                        p(class="my-0"){$"#<@@(entity,'$ejercicio')>"}
+                        h6(class="my-0"){"Unidad Organizacional:"}
+                        p(class="my-0"){"#<@@(entity,'$unidad_org')>"}
                     }
-                    div(class="col-lg-5 col-md-5 col-sm-12 text-md-end d-lg-flex align-items-center justify-content-lg-end gap-1")
+                    div(class="col-3 col-md-2 d-md-flex align-items-center justify-content-md-start gap-1")
                     {
-                        h6(class="my-0"){$"Partida Presupuestal:"}
-                        p(class="my-0"){$"#<@@(entity,'$partida_pre')>"}
+                        h6(class="my-0"){"Ejercicio:"}
+                        p(class="my-0"){"#<@@(entity,'$ejercicio')>"}
+                    }
+                    div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-center gap-1")
+                    {
+                        h6(class="my-0"){"Partida Presupuestal:"}
+                        p(class="my-0"){"#<@@(entity,'$partida_pre')>"}
+                    }
+                    div(class="col-3 col-md-2 d-md-flex align-items-center justify-content-md-end gap-1")
+                    {
+                        h6(class="my-0"){"Periodo:"}
+                        p(class="my-0"){"#<periodo>"}
                     }
                 }
 
                 div(class="d-flex justify-content-between flex-wrap gap-2")
                 {
-                    div(class="d-flex align-items-center gap-1 #<ifstr(not(@consolidacion),'','d-none')>")
-                    {
-                        h6(class="my-0"){$"Periodo:"}
-                        p(class="my-0"){$"#<@@(entity,'$periodo')>"}
-                    }
                     div(class="d-flex align-items-center gap-1")
                     {
                         h6(class="my-0"){$"Elaboración:"}

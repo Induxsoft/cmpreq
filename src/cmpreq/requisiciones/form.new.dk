@@ -459,7 +459,7 @@ module "form.new.dk"
                     }
                     div(class="col-6 col-sm-3")
                     {
-                        label(class="form-label" "for"="txt_status"){"Estado:"}
+                        label(class="form-label" "for"="sel_status"){"Estado:"}
                         ##
                         do uie.dbSelect(sel_status)
                         ##

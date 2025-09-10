@@ -141,19 +141,16 @@ module "form.edt.dk"
                         label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
                         input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpreq)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
                     }
-
                     div(class="col-6 col-sm-3 col-md-2")
                     {
                         label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
                         input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpreq)>" id="txt_flimite" title="Fecha y hora límite para completarla")
                     }
-
                     div(class="col-8 col-sm-6 col-md-4")
                     {
                         label(class="form-label" "for"="txt_divisa"){$"Divisa:"}
                         input(class="form-control form-control-sm rounded-0" type="text" value="#<@@(cmpreq,'$ddivisa')>" id="txt_divisa" "data-codigo"="#<@@(cmpreq,'$cdivisa')>" disabled="")
                     }
-
                     div(class="col-4 col-sm-3 col-md-2")
                     {
                         label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}

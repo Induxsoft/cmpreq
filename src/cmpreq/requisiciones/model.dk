@@ -5,8 +5,8 @@ module ""
     @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
-    @create_fields = @sys_fields + ",fecha,flimite,partida,periodo,referencia,folio,ucreo,uaprobo,status,notas,consolidacion,en,subtotal,impuestos,divisa,tcambio,tipo,almacen,ejercicio,unidad_org"
-    @update_fields = @sys_fields + ",fecha,flimite,uaprobo,status,notas,en,subtotal,impuestos,tcambio"
+    @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,almacen,unidad_org,ejercicio,partida,periodo,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,en,ucreo,uaprobo"
+    @update_fields = @sys_fields + ",fecha,flimite,tcambio,status,notas,subtotal,impuestos,en,uaprobo"
     
     @create_exclude_fields = "sys_lastuser"
     @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
@@ -650,8 +650,8 @@ module ""
         {
             @"sys_user": @@(@http_context, "$session/user/uid")
             @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
-            @"unidad_org":@@(data,"#unidad_org")
-            @"ejercicio":@@(data,"#ejercicio")
+            @"unidad_org": @@(data,"#unidad_org")
+            @"ejercicio": @@(data,"#ejercicio")
             @"partida": @@(data,"#partida")
             @"periodo": @@(data,"#periodo")
             @"tipo": @@(data,"#tipo")
@@ -668,10 +668,11 @@ module ""
         }
 
         if @@(cmpreq,"#tipo") <= 0 { do rise_error(511,"No se ha indicado el tipo de requisición.") }
+        if @@(cmpreq,"$fecha") == "" { do rise_error(512,"No se establecio la fecha de elaboración.") }
         if @@(cmpreq,"#unidad_org") < 1 { do rise_error(512,"No se ha indicado la unidad organizacional.") }
         if @@(cmpreq,"#almacen") < 1 { do rise_error(513,"No se ha indicado el almacén.") }
         if @@(cmpreq,"#divisa") < 1 { do rise_error(514,"No se ha indicado una divisa.") }
-        if @@(cmpreq,"#tcambio") < 1 { do rise_error(515,"Debe especificar un tipo de cambio válido.") }
+        if @@(cmpreq,"#tcambio") <= 0 { do rise_error(515,"Debe especificar un tipo de cambio válido.") }
         if @@(cmpreq,"#status") < 0 { cmpreq<"status"> : @stt_borrador }
         if @@(cmpreq,"$flimite") == "" { do field.remove(cmpreq,"flimite") }
 
@@ -724,6 +725,7 @@ module ""
         do dbr.apps.action.ext(entity)
 
         @url_redir = replace(url_redir, "{_entity_id}", @@(entity,"$sys_pk"))
+        return entity
 
         exception
         {
@@ -823,6 +825,9 @@ module ""
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
         do dbr.apps.action.ext(entity)
+
+        @url_redir = @CMP_REQUISICION
+        return entity
 
         exception
         {

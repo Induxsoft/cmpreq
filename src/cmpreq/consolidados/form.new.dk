@@ -13,66 +13,89 @@ module "form.dk"
 
     ref @_GET = ifnull(@("&parameters"),record.create())
     ref cmpreq = ifnull(@("&./cmpreq"),record.create())
-    ref list_series =ifnull(@("&./list_series"),list.create())
-    ref list_status = ifnull(@("&./list_status"),list.create())
-    ref list_divisas = ifnull(@("&./list_divisas"),list.create())
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
+    ik_sm_style = "
+    #input_search_container, #input_description_container,
+    #button_search_container, #button_clear_container {
+        height: calc(1.5em + .5rem + 2px) !important;
+        padding: .25rem .5rem !important;
+        font-size: .875rem !important;
+    }
+    "
+
     new sel_serie
     {
-        @"datatable*": list_series
         @"id": "sel_serie"
-        new member "attributes"
+        @"value_field": "serie"
+        @"text_field": "serie"
+        @"selected": lib.form('serie','nm',cmpreq)
+        @"datatable*": ifnull(@("&./list_series"),list.create())
+        member "attributes"
         {
             @"class": "form-select form-select-sm rounded-0"
             @"style": "max-width:6rem;"
             @"name": "serie"
             @"required": ""
         }
-        @"value_field": "serie"
-        @"text_field": "serie"
-        new member "attr_options"
+        member "attr_options"
         {
             @"data-iblock": "#<@@(row,'#sys_pk')>"
         }
-        @"selected": lib.form('serie','nm',cmpreq)
+    }
+
+    new sel_almacen
+    {
+        @"id": "sel_almacen"
+        // @"first_value": "-1"
+        // @"first_text": "(Todos los almacenes)"
+        @"value_field": "sys_pk"
+        @"text_field": "descripcion"
+        @"selected": lib.form('almacen','nm',cmpreq)
+        @"datatable*": ifnull(@("&./list_almacenes"),list.create())
+        member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "almacen"
+            @"required": ""
+        }
+    }
+
+    new sel_divisa
+    {
+        @"id": "sel_divisa"
+        @"value_field": "sys_pk"
+        @"text_field": "text"
+        @"selected": lib.form('divisa','nm',cmpreq)
+        @"datatable*": ifnull(@("&./list_divisas"),list.create())
+        member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "divisa"
+            @"required": ""
+        }
+        member "attr_options"
+        {
+            @"data-codigo": "#<toupper(@@(row,'$codigo'))>"
+            @"data-tcambio": "#<@@(row,'#tcambio')>"
+        }
     }
 
     new sel_status
     {
-        @"datatable*": list_status
         @"id": "sel_status"
+        @"value_field": "id"
+        @"text_field": "const"
+        @"selected": field.dnum(ifnull(@("&./form"),cmpreq),"status",1)
+        @"datatable*": ifnull(@("&./list_status"),list.create())
         member "attributes"
         {
             @"class": "form-select form-select-sm rounded-0"
             @"name": "status"
             @"required": ""
         }
-        @"value_field": "id"
-        @"text_field": "const"
-        @"selected": field.dnum(ifnull(@("&./form"),cmpreq),"status",1)
-    }
-
-    new sel_divisa
-    {
-        @"datatable*": list_divisas
-        @"id": "sel_divisa"
-        new member "attributes"
-        {
-            @"class": "form-select form-select-sm rounded-0"
-            @"name": "divisa"
-            @"required": ""
-        }
-        @"value_field": "sys_pk"
-        @"text_field": "text"
-        new member "attr_options"
-        {
-            @"data-codigo": "#<toupper(@@(row,'$codigo'))>"
-            @"data-tcambio": "#<@@(row,'#tcambio')>"
-        }
-        @"selected": lib.form('divisa','nm',cmpreq)
     }
 
     new nav_config
@@ -112,9 +135,9 @@ module "form.dk"
                     {
                         div(class="row gx-2")
                         {
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-4")
                             {
-                                label(class="form-label" "for"="txt_referencia"){$"Referencia:"}
+                                label(class="form-label" "for"="sel_serie"){$"Referencia:"}
                                 div(class="input-group input-group-sm")
                                 {
                                     ##
@@ -124,36 +147,46 @@ module "form.dk"
                                     button(class="btn btn-light btn-sm rounded-0 border" type="button" id="btn_get_folio" title="Obtener folio disponible para la serie seleccionada"){$"#<@ICON_HDOTS>"}
                                 }
                             }
-
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-4")
                             {
                                 label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
                                 input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpreq)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
                             }
-
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-4")
                             {
                                 label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
                                 input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpreq)>" id="txt_flimite" title="Fecha y hora límite para completarla")
                             }
-
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-12 col-lg-8")
                             {
-                                label(class="form-label" "for"="txt_divisa"){$"Divisa:"}
+                                label(class="form-label" "for"="ik_unidad_org"){"Unidad organizacional:"}
+                                "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
+                                    "data-value"="{}" "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>" columns="codigo,descripcion" colcaptions="Código,Descripción"
+                                    "control-styles"="#<ik_sm_style>"
+                                ){""}
+                            }
+                            div(class="col-12 col-sm-6 col-lg-4")
+                            {
+                                label(class="form-label" "for"="sel_almacen"){"Almacén:"}
+                                ##
+                                do uie.dbSelect(sel_almacen)
+                                ##
+                            }
+                            div(class="col-4")
+                            {
+                                label(class="form-label" "for"="sel_divisa"){$"Divisa:"}
                                 ##
                                 do uie.dbSelect(sel_divisa)
                                 ##
                             }
-
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-4")
                             {
                                 label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}
-                                input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
+                                input(class="form-control form-control-sm rounded-0" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" step="0.000001" required="")
                             }
-
-                            div(class="col-lg-4 col-md-4 col-sm-4")
+                            div(class="col-4")
                             {
-                                label(class="form-label" "for"="txt_status"){$"Estado:"}
+                                label(class="form-label" "for"="sel_status"){$"Estado:"}
                                 ##
                                 do uie.dbSelect(sel_status)
                                 ##
@@ -176,6 +209,7 @@ module "form.dk"
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
                 consolidados.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
+                consolidados.form.url_get_unialm = "#<@URL_OBTENER_UNIALM>";
                 consolidados.form.url_exit = "#<@CMP_REQUISICION>";
                 consolidados.form.init();
                 InduxsoftNumberFields.Init();
