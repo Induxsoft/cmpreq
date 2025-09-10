@@ -809,6 +809,12 @@ model "erp.requisiciones"
     {
         @"unidad_org" ref:"rh_unidad_org" required
         @"almacen" ref:"almacen" required
+
+        index "idx1" unique
+        {
+            field "unidad_org"
+            field "almacen"
+        }
     }
 
     //* ======================================== [ ... ]

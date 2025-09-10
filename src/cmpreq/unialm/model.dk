@@ -1,0 +1,244 @@
+#include "dkli.dkh"
+#!
+module ":unialm"
+{
+    @table_name = "unidad_almacen"
+    @keyfield = "sys_pk"
+
+    @list_query = "
+    SELECT
+        u.sys_pk,
+        u.sys_guid,
+        uni.codigo AS c_unidad,
+        uni.descripcion AS d_unidad,
+        alm.codigo AS c_almacen,
+        alm.descripcion AS d_almacen
+    FROM #<@table_name> u
+        INNER JOIN rh_unidad_org uni ON u.unidad_org = uni.sys_pk
+        INNER JOIN almacen alm ON u.almacen = alm.sys_pk
+    WHERE
+        NOT IFNULL(u.sys_deleted,0)
+        AND (
+            @search IS NULL
+            OR uni.descripcion LIKE CONCAT('%',@search,'%')
+            OR alm.descripcion LIKE CONCAT('%',@search,'%')
+        )
+    LIMIT #<@default_max_rows>
+    "
+    @read_query = "SELECT * FROM #<@table_name> WHERE #<@keyfield> = @_entity_id LIMIT 1"
+
+    function buscarAlmacen(&db,&params)
+    {
+        sql = "
+        SELECT
+            alm.sys_pk,
+            alm.codigo,
+            alm.descripcion
+        FROM almacen alm
+            LEFT JOIN unidad_almacen ua ON alm.sys_pk = ua.almacen
+        WHERE "
+
+        if field.exist(params,"a")
+        {
+            sql = sql + "alm.sys_pk = @a"
+            return dbr.rec(db,sql,params)
+        }
+        if field.exist(params,"s")
+        {
+            sql = sql + "NOT IFNULL(alm.sys_deleted,0) AND (@s IS NULL OR alm.codigo = @s OR alm.descripcion LIKE CONCAT('%',@s,'%'))"
+            return dbr.list(db,sql,params)
+        }
+        if field.exist(params,"u")
+        {
+            sql = sql + "ua.unidad_org = @u"
+            return dbr.list(db,sql,params)
+        }
+    }
+    
+    function setPrintTitles(&db,&data)
+    {
+        using data
+        {
+            member @"titles"
+            {
+                @"title": dbr.vars.getd(db,"FXCA108","")
+                @"subtitle": dbr.vars.getd(db,"FXCA109","")
+                @"subtitle_2": dbr.vars.getd(db,"FXCA110","")
+                @"footer": dbr.vars.getd(db,"FXCA111","")
+            }
+        }
+    }
+
+    //#region prepareView()
+    function prepareView(&db,&params,&data)
+    {
+        is_new = (@@(params,"$_entity_id") == "_new")
+
+        if field.exist(data,"unidad_org")
+        {
+            conditions = "AND sys_pk = @u"
+            params<"u"> : @@(data,"#unidad_org")
+            data<"_unidad*"> : dbr.rec(db,ftext(@qry_buscar_unidad),params)
+        }
+        if field.exist(data,"almacen")
+        {
+            params<"a"> : @@(data,"#almacen")
+            data<"_almacen*"> : buscarAlmacen(db,params)
+        }
+    }
+
+    //#region prepareList()
+    function prepareList(&db,&params,&data)
+    {
+        //code here...
+    }
+
+    //#region evaluateFilters()
+    function evaluateFilters(&params)
+    {
+        //code here...
+    }
+
+    //#region validateFields()
+    function validateFields(&data)
+    {
+        //code here...
+    }
+
+    //#region list()
+    function list(&db,&params)
+    {
+        do dbr.apps.action.grant("TD50")
+
+        do evaluateFilters(params)
+        new data
+        {
+            @"data*": entity.list(db,params)
+            @"itemactions*": dbr.apps.itemactions(db,"DET0B0","action","",0)
+            @"itemreports*": dbr.apps.itemactions(db,"DET0B0","report","",0)
+        }
+        do prepareList(db,params,data)
+        do setPrintTitles(db,data)
+
+        return data
+
+        exception{ do catch(db,params,@null) }
+    }
+
+    //#region read()
+    function read(&db,&params)
+    {
+        do dbr.apps.action.grant("TD50")
+
+        if not(isset("@just_read_entity")) { @just_read_entity = @false }
+        if @just_read_entity { return entity.read(db,params) }
+
+        ref data = entity.read(db,params)
+        do prepareView(db,params,data)
+        return data
+
+        exception{ do catch(db,params,@null) }
+    }
+
+    //#region blank()
+    function blank(&db,&params)
+    {
+        do dbr.apps.action.grant("TD50")
+
+        new data {}
+        do prepareView(db,params,data)
+
+        return data
+
+        exception{ do catch(db,params,@null) }
+    }
+
+    //#region create()
+    function create(&db,&params,&data)
+    {
+        @use_transaction = @false
+        @just_read_entity = @true
+
+        do dbr.apps.action.pre("TD51")
+        do dbr.begin(db)
+
+        do validateFields(data)
+        ref entity = entity.create(db,params,data)
+
+        do dbr.apps.action.pos(entity)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
+
+        return entity
+
+        exception{ do catch(db,params,data) }
+    }
+
+    //#region update()
+    function update(&db,&params,&data)
+    {
+        @use_transaction = @false
+        @just_read_entity = @true
+
+        do dbr.apps.action.pre("TD52")
+        do dbr.begin(db)
+
+        do validateFields(data)
+        ref entity = entity.update(db,params,data)
+
+        do dbr.apps.action.pos(entity)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
+
+        return entity
+
+        exception{ do catch(db,params,data) }
+    }
+
+    //#region delete()
+    function delete(&db,&params)
+    {
+        @use_transaction = @false
+
+        do dbr.apps.action.pre("TD53")
+        do dbr.begin(db)
+
+        ref entity = entity.delete(db,params)
+
+        do dbr.apps.action.pos(entity)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(entity)
+
+        return entity
+
+        exception{ do catch(db,params,@null) }
+    }
+
+    //#region catch()
+    function catch(&db,&params,&data)
+    {
+        do errordet(@false)
+        code = last_error_code()
+        error = last_error()
+
+        if dbr.in_transaction(db) { do dbr.rollback(db) }
+        if isset("@@_action_context") { do dbr.apps.action.log() }
+
+        if isanyword(@@(params,"$_operation"),"create,update")
+        {
+            if isnull(data) { ref data:record.create() }
+            if contains(error,"Duplicate entry") { error = "Entrada duplicada, el almacén proporcionado ya esta vinculado a la unidad seleccionada." }
+
+            do prepareView(db,params,data)
+        }
+        else if @@(params,"$_operation") == "delete"
+        {
+            if contains(error,"Cannot delete or update a parent row") || contains(error,"DELETE Error") {
+                error = "No es posible eliminar, otros registros dependen del elemento proporcionado."
+            }
+        }
+
+        do clear_exceptions()
+        do rise_error(code,error)
+    }
+}

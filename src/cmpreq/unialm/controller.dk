@@ -1,0 +1,20 @@
+#include "dkli.dkh"
+#!
+module "UnidadAlmacenController"
+{
+    point @list to unialm.list
+    point @read to unialm.read
+    point @blank to unialm.blank
+    point @create to unialm.create
+    point @update to unialm.update
+    point @delete to unialm.delete
+
+    switch @@(params,"$action")
+    {
+        case "buscar-almacen"
+        {
+            point @list to unialm.buscarAlmacen
+            break
+        }
+    }
+}

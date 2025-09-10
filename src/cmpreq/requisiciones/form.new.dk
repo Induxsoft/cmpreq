@@ -235,21 +235,7 @@ module "form.new.dk"
         @"value_field": "id"
         @"text_field": "const"
         @"selected": @('#./periodo')
-        @"datatable*": from.json('[
-            {"id":"1","const":"Enero"},
-            {"id":"2","const":"Febrero"},
-            {"id":"3","const":"Marzo"},
-            {"id":"4","const":"Abril"},
-            {"id":"5","const":"Mayo"},
-            {"id":"6","const":"Junio"},
-            {"id":"7","const":"Julio"},
-            {"id":"8","const":"Agosto"},
-            {"id":"9","const":"Septiembre"},
-            {"id":"10","const":"Octubre"},
-            {"id":"11","const":"Noviembre"},
-            {"id":"12","const":"Diciembre"},
-            {"id":"13","const":"Extraordinario"},
-        ]')
+        @"datatable*": @periodos
         member "attributes"
         {
             @"class": "form-select form-select-sm rounded-0"
@@ -495,6 +481,7 @@ module "form.new.dk"
                     document.addEventListener("DOMContentLoaded", () => {
                         requisiciones.form.url_get_fultimo = "#<@URL_OBTENER_FULTIMO>";
                         requisiciones.form.url_get_linea = "#<@URL_OBTENER_LINEAS_XCLASE>";
+                        requisiciones.form.url_get_unialm = "#<@URL_OBTENER_UNIALM>";
                         requisiciones.form.init();
                         // Script injection
                         #<@@(@crud_context,"$script")>

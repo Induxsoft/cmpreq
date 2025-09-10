@@ -21,3 +21,8 @@ TD32,Editar solicitud de cotización,cmpreq.solicitudes
 TD33,Cancelar solicitud de cotización,cmpreq.solicitudes
 TD40,Ver mensajes de requisiciones,cmpreq.requisiciones
 TD41,Publicar mensajes de requisiciones,cmpreq.requisiciones
+cmpreq.unialm,Almacenes de unidades organizacionales,cmpreq
+TD50,Unidades-Almacenes,cmpreq.unialm
+TD51,Vincular almacen a unidad organizacional,cmpreq.unialm
+TD52,Editar almacén vinculado a unidad organizacional,cmpreq.unialm
+TD53,Eliminar almacén vinculado a unidad organizacional,cmpreq.unialm

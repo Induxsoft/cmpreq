@@ -18,7 +18,7 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
-    if @@(cmpcon,"$tipo") == "D" {
+    if not(@@(cmpcon,"#consolidacion")) {
         @http_context<"response/headers/location"> : path.concat(@CMP_REQUISICION,@_entity_id)+"/"
         return
     }
@@ -52,16 +52,7 @@ module "form.dk"
         _detalle = @("$./form/_detalle")
         if _detalle != "" { ref dcmpcon = from.json(_detalle) }
     }
-    
-    if list.count(dcmpcon) <= 0 { ref dcmpcon = from.json(empty_rows) }
-    else
-    {
-        er = list.count(from.json(empty_rows)) - list.count(dcmpcon)
-        repeat er
-        {
-            do list.add(dcmpcon,record.create())
-        }
-    }
+    do lib.AutoFillRows(dcmpcon,10)
 
     header_act::
     {

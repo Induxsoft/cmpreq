@@ -123,22 +123,21 @@ module ""
         new cmpcon
         {
             @"sys_user": @@(@http_context, "$session/user/uid")
-
+            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
             @"referencia": referencia
             @"folio": @@(infoFolio,"#sys_pk")
-            @"fecha*": str2dt(trim(@@(data,"$fecha")))
-            @"flimite*": @null
+            @"fecha": @@(data,"$fecha")
+            @"flimite": @@(data,"$flimite")
             @"subtotal": 0
             @"impuestos": 0
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"ucreo": lib.GetPkUsr(db,@@(@http_context, "$session/user/uid"))
             @"consolidacion": @true
             @"tipo": @type_req_consl
         }
 
-        if trim(@@(data,"$flimite")) != "" { cmpcon<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        if @@(cmpcon,"$flimite") == "" { do field.remove(cmpcon,"flimite") }
         
         ref entity = @@(entity.create(db,params,cmpcon),"&cmpcon")
 
@@ -179,15 +178,15 @@ module ""
             @"sys_lastuser": @@(@http_context, "$session/user/uid")
             @"sys_recver": @@(data,"#sys_recver")
 
-            @"fecha*": str2dt(trim(@@(data,"$fecha")))
-            @"flimite*": @null
+            @"fecha": @@(data,"$fecha")
+            @"flimite": @@(data,"$flimite")
             @"subtotal": 0
             @"impuestos": 0
             @"tcambio": @@(data,"#tcambio")
             @"notas": trim(@@(data,"$notas"))
         }
 
-        if trim(@@(data,"$flimite")) != "" { cmpcon<"flimite*"> : str2dt(trim(@@(data,"$flimite"))) }
+        if @@(cmpcon,"$flimite") == "" { do field.remove(cmpcon,"flimite") }
         new args
         {
             @"conId": trim(@@(params,"$_entity_id"))

@@ -13,6 +13,10 @@
             {
                 "route": "/solcot/",
                 "entity_type": "solcot"
+            },
+            {
+                "route": "/unialm/",
+                "entity_type": "unialm"
             }
         ]
     }

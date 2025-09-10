@@ -44,7 +44,7 @@ program "Controlador de eventos"
 
             ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
             // Finalizar proceso si la requisición no es 'Directa'.
-            if @@(req,"$tipo") != "D" { break }
+            if @@(req,"#consolidacion") { break }
 
             new gop_mov_data
             {

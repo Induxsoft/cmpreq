@@ -79,29 +79,43 @@ module "Requisiciones"
         @"table_footer": "Mostrando los primeros # registros"
         member @"columns"
         {
-            member @"referencia" { @"caption":"Referencia" }
-            member @"partida" { @"caption":"Partida" }
-            member @"tipo" { @"caption":"Tipo" }
-			member @"fecha" { @"caption": "Elaboración" }
-            member @"flimite" { @"caption": "Vencimiento" }
-            member @"cdivisa" { @"caption": "Divisa" }
-            member @"subtotal" { @"caption": "Subtotal" }
-            member @"impuestos" { @"caption": "Impuestos" }
-            member @"total" { @"caption": "Total" }
-            member @"cstatus" { @"caption": "Estado" }
-
-            member @"_actions" 
+            member @"referencia" { @"caption": "Referencia" }
+            member @"partida" { @"caption": "Partida" }
+            member @"tipo" { @"caption": "Tipo" }
+			member @"fecha"
             {
-                @"caption":"Acciones" 
-                @"template":ftext('
-                    <div class="no-print" style="display:flex;gap:8px;justify-content:center;width:100%;">
-                    ${
-                        (DataRow.tipo === "C")
-                            ? `<a href="#<@CMP_CONSOLIDADO>${DataRow.sys_pk}/" style="cursor:pointer; text-decoration:none; padding: 0px 8px; background-color:#F5F5F5; color:#000;">Editar</a>`
-                            : `<a href="#<@CMP_REQUISICION>${DataRow.sys_pk}/" style="cursor:pointer; text-decoration:none; padding: 0px 8px; background-color:#F5F5F5; color:#000;">Editar</a>`
-                    }
-                    </div>')
-                @"no-print":@true
+                @"caption": "Elaboración"
+                @"align": "center"
+            }
+            member @"flimite"
+            {
+                @"caption": "Vencimiento"
+                @"align": "center"
+            }
+            member @"cdivisa"
+            {
+                @"caption": "Divisa"
+                @"align": "center"
+            }
+            member @"subtotal"
+            {
+                @"caption": "Subtotal"
+                @"align": "end"
+            }
+            member @"impuestos"
+            {
+                @"caption": "Impuestos"
+                @"align": "end"
+            }
+            member @"total"
+            {
+                @"caption": "Total"
+                @"align": "end"
+            }
+            member @"cstatus"
+            {
+                @"caption": "Estado"
+                @"align": "center"
             }
         }
     }
@@ -111,7 +125,7 @@ module "Requisiciones"
         @"title": "Requisiciones"
         @"buttons*": @null
         @"urlexit": "/"
-        @"main": "TD11,TD12,TD21"
+        @"main": "TD11,TD12"
         @"actions*": dbr.apps.itemactions(@('&database'),"DET070","action","",0)
         @"reports*": dbr.apps.itemactions(@('&database'),"DET070","report","",0)
         @"jscurrentcontext": "requisiciones.list.getCurrentContext"

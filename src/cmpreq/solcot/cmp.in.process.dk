@@ -21,7 +21,7 @@ module "form.dk"
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
 
-    @tipo = toupper(@@(entity,"$tipo"))
+    @consolidacion = @@(entity,"#consolidacion")
     @curr_status = @@(entity,"#status")
     @show_btn_xaprobar = (@curr_status == @stt_borrador)
     @show_btn_aprobar = (@curr_status == @stt_xaprobar)
@@ -38,11 +38,8 @@ module "form.dk"
         }
     }
 
-    switch @tipo
-    {
-        case "C" { ref _requisiciones = detail }
-        case "D" { ref _productos = detail }
-    }
+    if @consolidacion { ref _requisiciones = detail }
+    else { ref _productos = detail }
 
     do fixEdtData(_requisiciones,10)
     do fixEdtData(_productos,10)
@@ -105,7 +102,7 @@ module "form.dk"
                 input(type="hidden" name="sys_pk" value="#<@@(entity,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(entity, '#sys_recver')>")
 
-                div(class="row #<ifstr(@tipo=='D','','d-none')>")
+                div(class="row #<ifstr(not(@consolidacion),'','d-none')>")
                 {
                     div(class="col-lg-5 col-md-5 col-sm-12 text-md-start d-lg-flex align-items-center justify-content-lg-start gap-1")
                     {
@@ -126,7 +123,7 @@ module "form.dk"
 
                 div(class="d-flex justify-content-between flex-wrap gap-2")
                 {
-                    div(class="d-flex align-items-center gap-1 #<ifstr(@tipo=='D','','d-none')>")
+                    div(class="d-flex align-items-center gap-1 #<ifstr(not(@consolidacion),'','d-none')>")
                     {
                         h6(class="my-0"){$"Periodo:"}
                         p(class="my-0"){$"#<@@(entity,'$periodo')>"}
@@ -161,14 +158,14 @@ module "form.dk"
             {
                 div(class="nav nav-tabs mb-2" id="nav-tab" role="tablist")
                 {
-                    button(class="nav-link py-1 #<ifstr(@tipo=='C','active','d-none')>" type="button" role="tab" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
-                    button(class="nav-link py-1 #<ifstr(@tipo=='D','active','')>" type="button" role="tab" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
+                    button(class="nav-link py-1 #<ifstr(@consolidacion,'active','d-none')>" type="button" role="tab" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
+                    button(class="nav-link py-1 #<ifstr(not(@consolidacion),'active','')>" type="button" role="tab" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
                     button(class="nav-link py-1" type="button" role="tab" id="nav-solicitudes-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-solicitudes" "aria-controls"="nav-solicitudes" "aria-selected"="false"){$"Solicitudes"}
                 }
             }
             div(class="tab-content")
             {
-                div(class="tab-pane fade #<ifstr(@tipo=='C','show active','d-none')>" id="nav-requisiciones" role="tabpanel" "aria-labelledby"="nav-requisiciones-tab")
+                div(class="tab-pane fade #<ifstr(@consolidacion,'show active','d-none')>" id="nav-requisiciones" role="tabpanel" "aria-labelledby"="nav-requisiciones-tab")
                 {
                     div(class="" id="div_tbl_requisiciones" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
@@ -203,7 +200,7 @@ module "form.dk"
                     }
                 }
 
-                div(class="tab-pane fade #<ifstr(@tipo=='D','show active','')>" id="nav-productos" role="tabpanel" "aria-labelledby"="nav-productos-tab")
+                div(class="tab-pane fade #<ifstr(not(@consolidacion),'show active','')>" id="nav-productos" role="tabpanel" "aria-labelledby"="nav-productos-tab")
                 {
                     div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:60vh; display:flex;")
                     {
@@ -375,24 +372,19 @@ module "form.dk"
 		script(type="text/javascript")
 		{$'
             document.addEventListener("DOMContentLoaded", () => {
-                switch ("#<@tipo>") {
-                    case "C":
-                    {
-                        consolidados.edit.url_get_productos = "#<@URL_OBTENER_PRODUCTOS>";
-                        consolidados.edit.tableReq = document.getElementById("tbl_requisiciones");
-                        consolidados.edit.tableProd = document.getElementById("tbl_productos");
+                if (#<@consolidacion>)
+                {
+                    consolidados.edit.url_get_productos = "#<@URL_OBTENER_PRODUCTOS>";
+                    consolidados.edit.tableReq = document.getElementById("tbl_requisiciones");
+                    consolidados.edit.tableProd = document.getElementById("tbl_productos");
 
-                        consolidados.edit.sumarTotales();
-                        consolidados.edit.agregarProductos();
-                        break;
-                    }
-                    case "D":
-                    {
-                        requisiciones.edit.table = document.getElementById("tbl_productos");
-
-                        requisiciones.edit.sumarTotales();
-                        break;
-                    }
+                    consolidados.edit.sumarTotales();
+                    consolidados.edit.agregarProductos();
+                }
+                else
+                {
+                    requisiciones.edit.table = document.getElementById("tbl_productos");
+                    requisiciones.edit.sumarTotales();
                 }
 
                 solcot.url_exit = "#<@CMP_REQUISICION>";

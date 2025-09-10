@@ -64,38 +64,33 @@ module ""
         return dbr.list(db,ftext(@qry_solcot),params)
     }
 
-    obtenerProductos::&db,id,tipo
+    obtenerProductos::&db,id,consolidacion
     {
-        if tipo == "D"
+        if not(consolidacion)
         {
             new params { @"_entity_id": id }
             return dbr.list(db,ftext(@qry_obtener_productos),params)
         }
 
-        if tipo == "C"
-        {
-            new params { @"idcon": id }
+        new params { @"idcon": id }
 
-            conditions = "OR (d.ref_req IN (SELECT sys_pk FROM cmpreq WHERE en = @idcon))"
-            @qry_obtener_productos = ftext(@qry_obtener_productos)
+        conditions = "OR (d.ref_req IN (SELECT sys_pk FROM cmpreq WHERE en = @idcon))"
+        @qry_obtener_productos = ftext(@qry_obtener_productos)
 
-            sql_consol_prods = "
-            SELECT
-                sys_pk,
-                descripcion,
-                unidad,
-                precio,
-                ROUND(SUM(cantidad),4) AS cantidad,
-                ROUND(SUM(impuestos),4) AS impuestos,
-                ROUND(SUM(importe),4) AS importe,
-                excluido
-            FROM (#<@qry_obtener_productos>) AS res
-            GROUP BY res.sys_pk
-            "
-            return dbr.list(db,ftext(sql_consol_prods),params)
-        }
-
-        return list.create()
+        sql_consol_prods = "
+        SELECT
+            sys_pk,
+            descripcion,
+            unidad,
+            precio,
+            ROUND(SUM(cantidad),4) AS cantidad,
+            ROUND(SUM(impuestos),4) AS impuestos,
+            ROUND(SUM(importe),4) AS importe,
+            excluido
+        FROM (#<@qry_obtener_productos>) AS res
+        GROUP BY res.sys_pk
+        "
+        return dbr.list(db,ftext(sql_consol_prods),params)
     }
 
     obtenerCotizaciones::&db,&params
@@ -155,6 +150,9 @@ module ""
 
     prepareView::&db,&params,&data
     {
+        if not(field.exist(data,"entity")) { data<"entity*"> : dbr.rec(db,ftext(@qry_cmpreq),params) }
+        consolidacion = @@(data,"#entity/consolidacion")
+
         switch @@(params,"$_view")
         {
             case "cmp-in-process"
@@ -164,9 +162,8 @@ module ""
                     @"doctype": @cCotizacion
                 }
 
-                if not(field.exist(data,"entity")) { data<"entity*"> : dbr.rec(db,ftext(@qry_cmpreq),params) }
-                if @@(data,"entity/tipo") == "D" { data<"detail*"> : dbr.list(db,ftext(@qry_obtener_productos),params) }
-                else if @@(data,"entity/tipo") == "C"
+                if not(consolidacion) { data<"detail*"> : dbr.list(db,ftext(@qry_obtener_productos),params) }
+                else
                 {
                     args<"idcon"> : @@(params,"$_entity_id")
 
@@ -186,9 +183,7 @@ module ""
             }
             case "cc"
             {
-                if not(field.exist(data,"entity")) { data<"entity*"> : dbr.rec(db,ftext(@qry_cmpreq),params) }
-
-                data<"productos*"> : obtenerProductos(db, @@(params,"$_entity_id"), @@(data,"entity/tipo"))
+                data<"productos*"> : obtenerProductos(db, @@(params,"$_entity_id"), consolidacion)
                 data<"cotizaciones*"> : obtenerCotizaciones(db,params)
                 break
             }
@@ -277,7 +272,7 @@ module ""
             {
                 @"documento": @cPedido
                 @"referencia": path.concat(ref_cmpreq,@@(data,"$referencia"))
-                @"statusadministrativo": @stt_adm_cerrado
+                @"statusadministrativo": @stt_adm_procesado
             }
 
             @table_name = "compra"
@@ -342,7 +337,7 @@ module ""
             WHERE req.sys_pk = @_entity_id
             "
 
-            if @@(req,"$tipo") == "D"
+            if not(@@(req,"#consolidacion"))
             {
                 new gop_mov_data
                 {
@@ -367,8 +362,7 @@ module ""
                 if not(pregop.partida.ejercido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), total_pedido))
                 { do rise_error(500,"Hubo un problema al afectar el ejercido del ejercicio correspondiente.") } */
             }
-
-            if @@(req,"$tipo") == "C"
+            else
             {
                 ref list_reqs = dbr.list(db,"SELECT sys_pk AS _entity_id FROM cmpreq WHERE en = @_entity_id",params)
                 for i = 0; i < list.count(list_reqs)

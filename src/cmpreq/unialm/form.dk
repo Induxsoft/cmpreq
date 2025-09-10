@@ -1,0 +1,119 @@
+#include "dkli.dkh"
+#!
+module "form.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+	#include "../_lib/icons.dk"
+
+    do @context.begin(@crud_context)
+
+    ref unidad = ifnull(@("&./_unidad"),record.create())
+    ref almacen = ifnull(@("&./_almacen"),record.create())
+
+	@_entities_type = @("$parameters/_entities_type")
+	@_entity_id = @("$parameters/_entity_id")
+	@is_new = (@_entity_id == "_new")
+    @form_id = "frm_"+@_entities_type
+
+    ik_sm_style = "
+    #input_search_container, #input_description_container,
+    #button_search_container, #button_clear_container {
+        height: calc(1.5em + .5rem + 2px) !important;
+        padding: .25rem .5rem !important;
+        font-size: .875rem !important;
+    }
+    "
+
+    function printNavButtons()
+    {
+        cls = "btn btn-main-action btn-sm border-secondary induxsoft-corners"
+        #$
+        button(class="#<cls>" type="submit" form="#<@form_id>" title="Guardar"){$"#<@ICON_SAVE>"}
+        #!
+    }
+    point buttons to printNavButtons
+    new nav_config
+    {
+        @"title": ifstr(@is_new, "Vincular almacen", "Editar almacén vinculado")
+        @"urlexit": ".."
+        @"buttons*": buttons
+
+        member @"hidden"
+        {
+            @"copy": @true
+            @"csv": @true
+            @"print": @true
+            @"send": @true
+        }
+    }
+    // Encapsula a la vista en su totalidad, todo lo que hay antes o después no se considera 
+    #$
+    div(class="container" id="view")
+    {
+        // link(href="/$/{_pack}/css/styles.css" rel="stylesheet"){""}
+
+        // Filtros y acciones
+        section(id="top_area")
+        {
+            #!
+            do uie.printV12FormBar(nav_config)
+            #$
+        }
+        // Contenido principal
+        section(id="work_area" style="overflow-y:auto; overflow-x:hidden;")
+        {
+            #!
+            error = @("$error/message")
+            if error != ""
+            {
+                #$
+                div(class="alert alert-danger alert-dismissible fade show mb-2 pb-1" role="alert")
+                {
+                    div(class="w-100 overflow-auto pb-2"){$"#<error>"}
+                    button(type="button" class="btn-close" "data-bs-dismiss"="alert" "aria-label"="Close"){""}
+                }
+            }
+            #$
+            form(class="px-1" action="./" method="POST" id="#<@form_id>")
+            {
+                input(type="hidden" name="sys_pk" value="#<@('#./sys_pk')>")
+                input(type="hidden" name="sys_recver" value="#<@('#./sys_recver')>")
+                #!
+                do uie.print_from_url_field()
+                #$
+
+                label(class="form-label" "for"="ik_unidad"){"Unidad organizacional:"}
+                "input-key"(name="unidad_org" id="ik_unidad" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
+                    "data-value"="#<to.json(unidad)>" "data-source"="#<@URL_BUSCAR_UNIDAD_ORG>" columns="codigo,descripcion" colcaptions="Código,Descripción"
+                ){""}
+
+                label(class="form-label" "for"="ik_almacen"){"Almacén:"}
+                "input-key"(name="almacen" id="ik_almacen" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion"
+                    "data-value"="#<to.json(almacen)>" "data-source"="#<@URL_BUSCAR_ALMACEN>" columns="codigo,descripcion" colcaptions="Código,Descripción"
+                ){""}
+            }
+        }
+        // Resúmenes y datos al pie
+        section(id="bottom_area")
+        {
+            //////////////////////////////////////////////////////////////////
+            div(id="_custom_area")
+            {
+                // script(src="/$/{_pack}/js/script.js"){$""}
+                script(type="text/javascript")
+                {$'
+                    document.addEventListener("DOMContentLoaded", () => {
+                        // Script injection
+                        #<@@(@crud_context,"$script")>
+                    });
+                '}
+            }
+        }
+    }
+    #!
+    
+    do @context.end()
+}

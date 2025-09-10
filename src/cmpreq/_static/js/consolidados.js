@@ -145,6 +145,27 @@ var consolidados =
         changeStatus(status)
         {
             if (!this.url_change_status) return;
+            if (status == 10)
+            {
+                let _detalle = this.cleanDataArray(this.tableReq);
+                let _reqsId = [];
+
+                if (_detalle.length < 1) {
+                    alert("Debe agregar requiciciones a la tabla.")
+                    return
+                }
+                for (let i = 0; i < _detalle.length; i++) {
+                    const data = _detalle[i];
+                    
+                    if (_reqsId.includes(data.sys_pk)) continue;
+                    _reqsId.push(data.sys_pk);
+                }
+                
+                const txt_requisiciones = document.getElementById("txt_requisiciones");
+                const txt_detalle = document.getElementById("txt_detalle");
+                txt_requisiciones.value = _reqsId.join(",");
+                txt_detalle.value = JSON.stringify(_detalle);
+            }
 
             let fd = new FormData(this.form);
             fd.append("status",status);

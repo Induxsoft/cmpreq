@@ -10,6 +10,22 @@ module
     @curr_day = ndatetime.day(@curr_ndt)
 
 	//* ======================================== [ CONSTANTS ]
+	ref @periodos = from.json('[
+		{"id":1,"const":"Enero"},
+		{"id":2,"const":"Febrero"},
+		{"id":3,"const":"Marzo"},
+		{"id":4,"const":"Abril"},
+		{"id":5,"const":"Mayo"},
+		{"id":6,"const":"Junio"},
+		{"id":7,"const":"Julio"},
+		{"id":8,"const":"Agosto"},
+		{"id":9,"const":"Septiembre"},
+		{"id":10,"const":"Octubre"},
+		{"id":11,"const":"Noviembre"},
+		{"id":12,"const":"Diciembre"},
+		{"id":13,"const":"Extraordinario"},
+	]')
+
 	// cdocumentos
 	@cCotizacion = 1
 	@cPedido = 2
@@ -54,6 +70,8 @@ module
 	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
 	@URL_BUSCAR_PROVEEDOR = "/!/cmpreq/solcot/?_view=buscar-proveedor&search=@search"
 	@URL_BUSCAR_COTIZACION = "/!/cmpreq/solcot/?_view=buscar-cotizacion&search=@search"
+	@URL_BUSCAR_ALMACEN = "/!/cmpreq/unialm/?action=buscar-almacen&s=@search"
+	@URL_OBTENER_UNIALM = "/!/cmpreq/unialm/?action=buscar-almacen&u=@unidad"
 	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
 	@URL_OBTENER_PRODUCTOS = "/!/cmpreq/consolidados/{ireq}/obtener-productos/"
 	@URL_OBTENER_LINEAS_XCLASE = "/!/cmpreq/requisiciones/?_view=obtener-lineas&iclase=@iclase"

@@ -157,6 +157,16 @@ module "Funciones de propósito general:lib"
         }
     }
 
+    // Si no hay más de {minrows} filas, autorellenar con filas vacias.
+    function AutoFillRows(&list,minrows)
+    {
+        add = (minrows - list.count(list))
+        repeat add
+        {
+            do list.add(list,record.create())
+        }
+    }
+
     function AppExist(&db,packId)
     {
         new p { @"id": packId }

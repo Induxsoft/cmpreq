@@ -34,19 +34,27 @@ var requisiciones =
     },
 
     form: {
-        url_get_fultimo:"", url_get_linea:"",
+        url_get_fultimo:"", url_get_linea:"", url_get_unialm:"",
 
         init()
         {
+            const sel_tipo = document.getElementById("sel_tipo");
+            const btn_get_folio = document.getElementById("btn_get_folio");
+            const ik_unidad_org = document.getElementById("ik_unidad_org");
             const sel_ejercicio = document.getElementById("sel_ejercicio");
             const ik_partida_pre = document.getElementById("ik_partida_pre");
-            const btn_get_folio = document.getElementById("btn_get_folio");
-            const sel_divisa = document.getElementById("sel_divisa");
             const fil_clase = document.getElementById("fil_clase");
+            const sel_divisa = document.getElementById("sel_divisa");
 
-            if (sel_ejercicio) sel_ejercicio.addEventListener("change", () => { ik_partida_pre.clear() });
-            if (ik_partida_pre) ik_partida_pre.onBeforeSearch = (url) => { return this.prepareIkPartida(url) }
+            if (sel_tipo) sel_tipo.addEventListener("change", (e) => this.onChangeTipo(e));
             if (btn_get_folio) btn_get_folio.addEventListener("click", () => { this.getFolio() });
+            if (ik_unidad_org) ik_unidad_org.change_event = (data) => {
+                ik_partida_pre.clear();
+                let params = {u:Number(data?.sys_pk??0)}
+                this.fillSelect("sel_almacen","sys_pk","descripcion",this.url_get_unialm,params);
+            };
+            if (sel_ejercicio) sel_ejercicio.addEventListener("change", () => { ik_partida_pre.clear() });
+            if (ik_partida_pre) ik_partida_pre.onBeforeSearch = this.prepareIkPartida;
             if (sel_divisa) sel_divisa.addEventListener("change", (event) => { this.setTipoCambio(event.target) });
             if (fil_clase) fil_clase.addEventListener("change", (event) => {
                 let params = {iclase:event.target.value}
@@ -85,6 +93,34 @@ var requisiciones =
             let endpoint = url + "&iunidad="+unidad.sys_pk + "&ejercicio="+ejercicio;
 
             return endpoint;
+        },
+
+        onChangeTipo(e)
+        {
+            const chk_add_products = document.getElementById('chk-add-products');
+            const chk_affect_gop = document.getElementById('chk-affect-gop');
+            
+            if (Number(e.target.value) == 10)
+            {
+                if (chk_add_products.checked)
+                {
+                    const lbl_add_products = document.querySelector('label[for="chk-add-products"]');
+                    lbl_add_products.click();
+                }
+                if (chk_affect_gop.checked)
+                {
+                    const lbl_affect_gop = document.querySelector('label[for="chk-affect-gop"]');
+                    lbl_affect_gop.click();
+                }
+                
+                chk_add_products.disabled = true;
+                chk_affect_gop.disabled = true;
+            }
+            else
+            {
+                chk_add_products.disabled = false;
+                chk_affect_gop.disabled = false;
+            }
         },
 
         getFolio()
