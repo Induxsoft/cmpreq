@@ -716,6 +716,27 @@ model "erp.requisiciones"
         @"iproducto" ref:"producto" required
         @"fk_compra_detalle" ref:"compra" required
     }
+    // Movimiento de inventario
+    entity "cardex" : "TableModel"
+    {
+        @"aplicado" bool
+        @"valuado" bool
+        @"fecha" date
+        @"referencia" string(255) unique required
+        @"descripcion" string(8192)
+        @"doccompra" ref:"compra"
+        // @"docorden" ref:"orden"
+        // @"docventa" ref:"venta"
+        @"icategoria" ref:"categoria" required
+    }
+    // Contiene cada partida del movimiento (la entrada o salida de un producto)
+    entity "dcardex" : "TableModel"
+    {
+        @"ialmacen" ref:"almacen" required
+        @"iproducto" ref:"producto" required
+        @"rcompra" ref:"dcompra"
+        @"fk_cardex_movimientos" ref:"cardex" required
+    }
 
     //* ======================================== [ ENTIDADES PRINCIPALES ]
     // Estados posibles para la requisición
@@ -737,6 +758,7 @@ model "erp.requisiciones"
         * 1-Gastos de operacion
         * 2-Mantenimiento de stock
         * 3-Previsión en general
+        * 4-Suplementaria
         * 10-Consolidación
         */
     }
@@ -763,6 +785,8 @@ model "erp.requisiciones"
         @"tcambio" decimal(12,6) required
         @"tipo" ref:"cmpreq_type"
         @"almacen" ref:"almacen"
+        @"cc" int ref:"cmpreq_cc" ["cc"] //requerido a nivel del modelo e interfaz
+        @"origen" ref:"cmpreq" //Se establece cuando se trata de una requisición suplementaria para relacionar con su origen
     }
     // Detalle de la requisición
     entity "dcmpreq" : "TableModel"
@@ -776,14 +800,19 @@ model "erp.requisiciones"
         @"excluido" bool
         @"notas" memo
         @"pedido" ref:"dcompra" // Fila (partida) del pedido de esta partida (lote) de la requisición
+        @"surtido" decimal(12,4) //Indica la cantidad de unidades que ya se han entregado
+    }
+
+    entity "dcmpreq_surtido" 
+    {
+        @"detalle" ref:"dcmpreq" required
+        @"movimiento" ref:"dcardex" required
     }
     
-    // Relacion entre filas de detalle de requisiciones directas y requisiciones consolidadas
-    // entity "cmpreqdcon": "TableModel"
-    // {
-    //     @"ref_req" ref:"cmpreq" required // Consolidada (requisicion)
-    //     @"ref_dcmpreq" ref: "dcmpreq" required // Fila de la requisicion directa que se considero antes de hacer el pedido (este desierta o no)
-    // }
+    entity "cmpreq_cc"
+    {
+        @"cc" ref:"cconsumo" unique required
+    }
 
     //Solicitud de cotización a proveedor
     entity "solcot" : "TableModel"

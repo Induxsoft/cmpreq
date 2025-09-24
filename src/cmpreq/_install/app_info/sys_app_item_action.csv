@@ -2,15 +2,18 @@
 TD11,Nueva requisición,Crear,,/!/cmpreq/requisiciones/_new/,0,cmpreq.requisiciones,DET070,0,action
 TD12,Editar requisición,Editar,,/!/cmpreq/requisiciones/@_src_context_item_id/,0,cmpreq.requisiciones,DET070,1,action
 TD13,Aprobar requisición,Aprobar,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=aprobar,0,cmpreq.requisiciones,DET070,1,action
-TD14,Iniciar proceso (requisición),Iniciar,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=iniciar,0,cmpreq.requisiciones,DET070,1,action
+TD14,Aquirir,Adquirir,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=adquirir,0,cmpreq.requisiciones,DET070,1,action
 TD15,Cancelar requisición,Cancelar,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=cancelar,0,cmpreq.requisiciones,DET070,1,action
 TD16,Desaprobar requisición,Desaprobar,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=desaprobar,0,cmpreq.requisiciones,DET070,1,action
 TD19,Comparar precios,Comparar precios,,/!/cmpreq/solcot/@_src_context_item_id/cc/,0,cmpreq.requisiciones,DET070,1,action
 TD1A,Generar pedidos,Generar pedidos,,/!/cmpreq/solcot/@_src_context_item_id/cc/?_act=gen-pedidos,0,cmpreq.requisiciones,DET070,1,action
+TD1B,Aprovisionar,Aprovisionar,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=aprovisionar,0,cmpreq.requisiciones,DET070,1,action
+TD1C,Surtir,Surtir,,/!/cmpreq/requisiciones/@_src_context_item_id/?_act=surtir,0,cmpreq.requisiciones,DET070,1,action
+
 TD21,Nueva requisición consolidada,Crear consolidado,,/!/cmpreq/consolidados/_new/,0,cmpreq.consolidados,DET070,0,action
 TD22,Editar requisición consolidada,Editar consolidado,,/!/cmpreq/consolidados/@_src_context_item_id/,0,cmpreq.consolidados,DET070,1,action
+
 TD50,Unidades-Almacenes,Unidades-Almacén,,/!/cmpreq/unialm/,0,cmpreq.unialm,DET0B0,0,shortcut
 TD51,Vincular almacen a unidad organizacional,Agregar,,/!/cmpreq/unialm/_new/,0,cmpreq.unialm,DET0B0,0,action
 TD52,Editar almacén vinculado a unidad organizacional,Modificar,,/!/cmpreq/unialm/@_src_context_item_id/,0,cmpreq.unialm,DET0B0,1,action
 TD53,Eliminar almacén vinculado a unidad organizacional,Eliminar,,"javascript:InduxsoftCrudlModel.Delete(`@_src_context_item_id`);",0,cmpreq.unialm,DET0B0,1,action
-

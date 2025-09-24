@@ -19,6 +19,11 @@ module "RequisicionesController"
             point @list to buscarProducto
             break
         }
+        case "buscar-cproduccion"
+        {
+            point @list to buscarCProduccion
+            break
+        }
         case "obtener-lineas"
         {
             point @list to obtenerLineaXClase
@@ -32,6 +37,20 @@ module "RequisicionesController"
         case "change-status"
         {
             point @update to req.changeStatus
+            break
+        }
+        case "aprovisionar"
+        {
+            @form_view = "aprovisionar.dk"
+
+            point @read to req.read
+            break
+        }
+        case "surtir"
+        {
+            @form_view = "surtir.dk"
+
+            point @read to req.read
             break
         }
         default

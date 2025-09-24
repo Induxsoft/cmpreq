@@ -48,6 +48,7 @@ module
 	@type_req_gop = 1
 	@type_req_stock = 2
 	@type_req_gral = 3
+	@type_req_sup = 4
 	@type_req_consl = 10
 
 	@default_max_rows = 250 // limite de registros para las vistas de lista
@@ -59,6 +60,8 @@ module
 	@CSS_MAIN = "/$/cmpreq/css/main.css"
 	@JS_MAIN = "/$/cmpreq/js/main.js"
 	@JS_REQUISICIONES = "/$/cmpreq/js/requisiciones.js"
+	@JS_APROVISIONAR = "/$/cmpreq/js/aprovisionar.js"
+	@JS_SURTIR = "/$/cmpreq/js/surtir.js"
 	@JS_CONSOLIDADOS = "/$/cmpreq/js/consolidados.js"
 	@JS_SOLCOT = "/$/cmpreq/js/solcot.js"
 	@JS_SOLCOT_CC = "/$/cmpreq/js/solcot.cc.js"
@@ -67,6 +70,7 @@ module
 	@URL_BUSCAR_UNIDAD_ORG = "/!/cmpreq/requisiciones/?_view=buscar-unidad-org&search=@search"
 	@URL_BUSCAR_PARTIDA_PRE = "/!/cmpreq/requisiciones/?_view=buscar-partida-pre&search=@search"
 	@URL_BUSCAR_PRODUCTO = "/!/cmpreq/requisiciones/?_view=buscar-producto&search=@search"
+	@URL_BUSCAR_CPRODUCCION = "/!/cmpreq/requisiciones/?_view=buscar-cproduccion&icconsumo=@icconsumo&iproducto=@iproducto&search=@search"
 	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
 	@URL_BUSCAR_PROVEEDOR = "/!/cmpreq/solcot/?_view=buscar-proveedor&search=@search"
 	@URL_BUSCAR_COTIZACION = "/!/cmpreq/solcot/?_view=buscar-cotizacion&search=@search"
@@ -82,7 +86,8 @@ module
 	@URL_AGREGAR_PEDIDO = "/!/compras/compras/_new/"
 
 	@CMP_REQUISICION = "/!/cmpreq/requisiciones/"
-	@CMP_NEW_REQUISICION = "/!/cmpreq/requisiciones/_new/?cmpreq_type={type}"
+	@CMP_APROVISIONAR = "/!/cmpreq/requisiciones/{ireq}/aprovisionar/"
+	@CMP_SURTIR = "/!/cmpreq/requisiciones/{ireq}/surtir/"
 	@CMP_CONSOLIDADO = "/!/cmpreq/consolidados/"
 	@CMP_SOLCOT = "/!/cmpreq/solcot/"
 	@CMP_IN_PROCESS = "/!/cmpreq/solcot/{ireq}/cmp-in-process/"

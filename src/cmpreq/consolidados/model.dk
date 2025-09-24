@@ -5,8 +5,8 @@ module ""
     @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
-    @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,unidad_org,almacen,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,en,ucreo,uaprobo"
-    @update_fields = @sys_fields + ",fecha,flimite,tcambio,status,notas,subtotal,impuestos,uaprobo,en"
+    @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,cc,ucreo,uaprobo"
+    @update_fields = @sys_fields + ",fecha,flimite,tcambio,status,notas,subtotal,impuestos,uaprobo"
     
     @create_exclude_fields = "sys_lastuser"
     @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
@@ -63,9 +63,13 @@ module ""
                 @"doctype": @cRequisicion
             }
 
-            data<"list_series*"> : dbr.list(db, @qry_list_series, args)
-            data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
-            data<"list_divisas*"> : dbr.list(db, @qry_list_divisas, @null)
+            using data
+            {
+                @"list_csurtido*": dbr.list(db,"SELECT b.sys_pk, b.descripcion FROM cmpreq_cc a INNER JOIN cconsumo b ON a.cc = b.sys_pk",@null)
+                @"list_series*": dbr.list(db, @qry_list_series, args)
+                @"list_status*": dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
+                @"list_divisas*": dbr.list(db, @qry_list_divisas, @null)
+            }
         }
         else
         {
@@ -130,20 +134,18 @@ module ""
             @"folio": @@(infoFolio,"#sys_pk")
             @"fecha": @@(data,"$fecha")
             @"flimite": @@(data,"$flimite")
-            @"unidad_org": @@(data,"#unidad_org")
-            @"almacen": @@(data,"#almacen")
-            @"subtotal": 0
-            @"impuestos": 0
+            @"cc": @@(data,"#cc")
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
+            @"subtotal": 0
+            @"impuestos": 0
         }
 
         if @@(cmpcon,"$fecha") == "" { do rise_error(511,"No se establecio la fecha de elaboración.") }
-        if @@(cmpcon,"#unidad_org") < 1 { do rise_error(512,"No se ha indicado la unidad organizacional.") }
-        if @@(cmpcon,"#almacen") < 1 { do rise_error(513,"No se ha indicado el almacén.") }
-        if @@(cmpcon,"#divisa") < 1 { do rise_error(514,"No se ha indicado una divisa.") }
-        if @@(cmpcon,"#tcambio") <= 0 { do rise_error(515,"Debe especificar un tipo de cambio válido.") }
+        if @@(cmpcon,"#cc") < 1 { do rise_error(512,"No se ha indicado el centro de surtido.") }
+        if @@(cmpcon,"#divisa") < 1 { do rise_error(513,"No se ha indicado una divisa.") }
+        if @@(cmpcon,"#tcambio") <= 0 { do rise_error(514,"Debe especificar un tipo de cambio válido.") }
         if @@(cmpcon,"#status") < 0 { cmpcon<"status"> : @stt_borrador }
         if @@(cmpcon,"$flimite") == "" { do field.remove(cmpcon,"flimite") }
         

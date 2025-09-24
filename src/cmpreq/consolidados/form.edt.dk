@@ -57,13 +57,14 @@ module "form.dk"
     header_act::
     {
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
-        
-        if @show_btn_xaprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_xaprobar>" title="Cambiar estado de la requisición"){$"#<@ICON_HOURGLASS> Por Aprobar"} #! }
-        if @show_btn_aprobar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_aprobado>" title="Cambiar estado de la requisición"){$"#<@ICON_CHECK> Aprobar"} #! }
-        if @show_btn_nproceso { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado de la requisición"){$"#<@ICON_PROCESS> En proceso"} #! }
-        if @show_btn_cancelar { #$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado de la requisición"){$"#<@ICON_FILE_CANCEL> Cancelar"} #! }
-        
-        if @enable_editing { #$ button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"} #! }
+
+        if @show_btn_nproceso {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado"){$"Adquirir"} #!}
+
+        if @show_btn_xaprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_xaprobar>" title="Cambiar estado"){$"#<@ICON_HOURGLASS> Por Aprobar"} #!}
+        if @show_btn_aprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_aprobado>" title="Cambiar estado"){$"#<@ICON_CHECK> Aprobar"} #!}
+        if @show_btn_cancelar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado"){$"#<@ICON_FILE_CANCEL> Cancelar"} #!}
+
+        if @enable_editing {#$ button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"} #! }
     }
 
     point general_act to header_act

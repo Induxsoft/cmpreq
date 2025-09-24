@@ -46,19 +46,32 @@ module "form.dk"
         }
     }
 
-    new sel_almacen
+    // new sel_almacen
+    // {
+    //     @"id": "sel_almacen"
+    //     @"value_field": "sys_pk"
+    //     @"text_field": "descripcion"
+    //     @"selected": lib.form('almacen','nm',cmpreq)
+    //     @"datatable*": ifnull(@("&./list_almacenes"),list.create())
+    //     member "attributes"
+    //     {
+    //         @"class": "form-select form-select-sm rounded-0"
+    //         @"name": "almacen"
+    //         @"required": ""
+    //     }
+    // }
+
+    new sel_csurtido
     {
-        @"id": "sel_almacen"
-        // @"first_value": "-1"
-        // @"first_text": "(Todos los almacenes)"
+        @"id": "sel_csurtido"
         @"value_field": "sys_pk"
         @"text_field": "descripcion"
-        @"selected": lib.form('almacen','nm',cmpreq)
-        @"datatable*": ifnull(@("&./list_almacenes"),list.create())
+        @"selected": @('#./cc')
+        @"datatable*": ifnull(@("&./list_csurtido"),list.create())
         member "attributes"
         {
             @"class": "form-select form-select-sm rounded-0"
-            @"name": "almacen"
+            @"name": "cc"
             @"required": ""
         }
     }
@@ -135,7 +148,7 @@ module "form.dk"
                     {
                         div(class="row gx-2")
                         {
-                            div(class="col-4")
+                            div(class="col-12 col-sm-4")
                             {
                                 label(class="form-label" "for"="sel_serie"){$"Referencia:"}
                                 div(class="input-group input-group-sm")
@@ -147,17 +160,17 @@ module "form.dk"
                                     button(class="btn btn-light btn-sm rounded-0 border" type="button" id="btn_get_folio" title="Obtener folio disponible para la serie seleccionada"){$"#<@ICON_HDOTS>"}
                                 }
                             }
-                            div(class="col-4")
+                            div(class="col-6 col-sm-4")
                             {
                                 label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
                                 input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpreq)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
                             }
-                            div(class="col-4")
+                            div(class="col-6 col-sm-4")
                             {
                                 label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
                                 input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpreq)>" id="txt_flimite" title="Fecha y hora límite para completarla")
                             }
-                            div(class="col-12 col-lg-8")
+                            /* div(class="col-12 col-lg-8")
                             {
                                 label(class="form-label" "for"="ik_unidad_org"){"Unidad organizacional:"}
                                 "input-key"(name="unidad_org" id="ik_unidad_org" required="true" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" 
@@ -171,20 +184,27 @@ module "form.dk"
                                 ##
                                 do uie.dbSelect(sel_almacen)
                                 ##
+                            } */
+                            div(class="col-12 col-sm-4")
+                            {
+                                label(class="form-label" "for"="sel_csurtido"){"Centro de surtido:"}
+                                ##
+                                do uie.dbSelect(sel_csurtido)
+                                ##
                             }
-                            div(class="col-4")
+                            div(class="col-12 col-sm-6")
                             {
                                 label(class="form-label" "for"="sel_divisa"){$"Divisa:"}
                                 ##
                                 do uie.dbSelect(sel_divisa)
                                 ##
                             }
-                            div(class="col-4")
+                            div(class="col-auto col-sm-2")
                             {
                                 label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}
                                 input(class="form-control form-control-sm rounded-0" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" step="0.000001" required="")
                             }
-                            div(class="col-4")
+                            div(class="col-auto col-sm-4")
                             {
                                 label(class="form-label" "for"="sel_status"){$"Estado:"}
                                 ##

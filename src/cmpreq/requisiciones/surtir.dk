@@ -1,0 +1,128 @@
+#include "dkli.dkh"
+#!
+module "surtir.dk"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+    #include "../_lib/lib.dk"
+	#include "../_lib/icons.dk"
+
+    do @context.begin(@crud_context)
+
+    ref cmpreq = ifnull(@("&./cmpreq"),record.create())
+    ref dcmpreq = lib.AutoFillRows(@("&./dcmpreq"),10)
+
+    @_entities_type = @("$parameters/_entities_type")
+	@_entity_id = @("$parameters/_entity_id")
+	@is_new = (@_entity_id == "_new")
+    @form_id = "frm_"+@_entities_type
+    @table_id = "tbl_"+@_entities_type
+
+    volume_decs = @("#parameters/volume_decs")
+
+    function printNavButtons()
+    {
+        cls = "btn btn-main-action btn-sm border-secondary induxsoft-corners"
+        #$
+        button(class="#<cls>" type="button" id="btn-submit"){$"#<@ICON_PROCESS> Generar"}
+        #!
+    }
+    point buttons to printNavButtons
+    new nav_config
+    {
+        @"title": @@(cmpreq,"$referencia") + " [Surtiendo]"
+        @"buttons*": buttons
+        
+        member @"hidden"
+        {
+            @"copy": @true
+            @"csv": @true
+            @"print": @true
+            @"send": @true
+        }
+    }
+
+    #$
+    div(class="container-lg")
+    {
+        // Filtros y acciones
+        section(id="top_area")
+        {
+            // link(href="/$/{_pack}/css/styles.css" rel="stylesheet"){""}
+            #!
+            do uie.printV12FormBar(nav_config)
+            #$
+        }
+        // Contenido principal
+        section(id="work_area" style="overflow-y:auto; overflow-x:hidden;")
+        {
+            div(class="d-flex align-items-center border px-2 py-1")
+            {
+                small(class="text-muted"){"Ingrese la cantidad a entregar por cada producto"}
+            }
+            div(class="d-flex border border-top-0" style="width:auto;min-width:100%;")
+            {
+                "edit-table"(id="#<@table_id>" data="#<to.json(dcmpreq)>" style="width:100%;"
+                "auto-confirm"="true"
+                "row-height"="1.2rem"
+                "control-styles"="
+                    tr th { font-size:.9rem; font-weight:500 !important; outline:none !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -o-text-overflow:ellipsis; }
+                    tr td { font-size:.8rem; }
+                    tr:not(.EdiTable-Row-Selected) td[data-cell='Código'],
+                    tr:not(.EdiTable-Row-Selected) td[data-cell='Descripción'],
+                    tr:not(.EdiTable-Row-Selected) td[data-cell='Unidad'],
+                    tr:not(.EdiTable-Row-Selected) td[data-cell='Requerido'],
+                    tr:not(.EdiTable-Row-Selected) td[data-cell='Surtido'],
+                    tr:not(.EdiTable-Row-Selected) td[data-cell='Faltante']
+                    {
+                        background-color:#FAFAFA;
+                        color:#000;
+                    }
+                    #__table_input { font-size:unset !important; }
+
+                    @media print
+                    {
+                        tr th { background-color: #DCDCDC; }
+                        tr td { background-color: #FFF !important; color:#000 !important; }
+                    }
+                ")
+                {
+                    "edit-thead"
+                    {
+                        "edit-tr"
+                        {
+                            "edit-th"(type="NoEditable" field="codigo"){"Código"}
+                            "edit-th"(type="NoEditable" field="descripcion"){"Descripción"}
+                            "edit-th"(type="NoEditable" field="unidad"){"Unidad"}
+                            "edit-th"(type="NoEditable" field="cantidad" textalign="end" format="true" decs="#<volume_decs>"){"Requerido"}
+                            "edit-th"(type="NoEditable" field="disponible" textalign="end" format="true" decs="#<volume_decs>"){"Surtido"}
+                            "edit-th"(type="Number" field="faltante" textalign="end" format="true" decs="#<volume_decs>"){"Entregar"}
+                            "edit-th"(type="NoEditable" field="comprar" textalign="end" format="true" decs="#<volume_decs>"){"Faltante"}
+                        }
+                    }
+                }
+            }
+        }
+        // Resúmenes y datos al pie
+        section(id="bottom_area")
+        {
+            //////////////////////////////////////////////////////////////////
+            div(id="_custom_area")
+            {
+                // script(src="/$/{_pack}/js/script.js"){$""}
+                script(type="text/javascript")
+                {$'
+                    document.addEventListener("DOMContentLoaded", () => {
+                        // Script injection
+                        #<@@(@crud_context,"$script")>
+                    });
+                '}
+            }
+        }
+    }
+    #!
+
+    do @context.end()
+}

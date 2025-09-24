@@ -97,11 +97,18 @@ var requisiciones =
 
         onChangeTipo(e)
         {
+            const ik_unidad_org = document.getElementById("ik_unidad_org");
+            const sel_almacen = document.getElementById("sel_almacen");
             const chk_add_products = document.getElementById('chk-add-products');
             const chk_affect_gop = document.getElementById('chk-affect-gop');
             
             if (Number(e.target.value) == 10)
             {
+                ik_unidad_org.removeAttribute('required');
+                ik_unidad_org.parentElement.hidden = true;
+                sel_almacen.required = false;
+                sel_almacen.parentElement.hidden = true;
+
                 if (chk_add_products.checked)
                 {
                     const lbl_add_products = document.querySelector('label[for="chk-add-products"]');
@@ -118,6 +125,11 @@ var requisiciones =
             }
             else
             {
+                ik_unidad_org.setAttribute('required','true');
+                ik_unidad_org.parentElement.hidden = false;
+                sel_almacen.required = true;
+                sel_almacen.parentElement.hidden = false;
+
                 chk_add_products.disabled = false;
                 chk_affect_gop.disabled = false;
             }

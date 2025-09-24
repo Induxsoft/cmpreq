@@ -88,8 +88,6 @@ module "form.new.dk"
     new sel_almacen
     {
         @"id": "sel_almacen"
-        // @"first_value": "-1"
-        // @"first_text": "(Todos los almacenes)"
         @"value_field": "sys_pk"
         @"text_field": "descripcion"
         @"selected": @('#./almacen')
@@ -98,6 +96,21 @@ module "form.new.dk"
         {
             @"class": "form-select form-select-sm rounded-0"
             @"name": "almacen"
+            @"required": ""
+        }
+    }
+
+    new sel_csurtido
+    {
+        @"id": "sel_csurtido"
+        @"value_field": "sys_pk"
+        @"text_field": "descripcion"
+        @"selected": @('#./cc')
+        @"datatable*": ifnull(@("&./list_csurtido"),list.create())
+        member "attributes"
+        {
+            @"class": "form-select form-select-sm rounded-0"
+            @"name": "cc"
             @"required": ""
         }
     }
@@ -323,6 +336,13 @@ module "form.new.dk"
                         label(class="form-label" "for"="sel_almacen"){"Almacén:"}
                         ##
                         do uie.dbSelect(sel_almacen)
+                        ##
+                    }
+                    div(class="col-auto")
+                    {
+                        label(class="form-label" "for"="sel_csurtido"){"Centro de surtido:"}
+                        ##
+                        do uie.dbSelect(sel_csurtido)
                         ##
                     }
 

@@ -45,6 +45,83 @@
                 "varinput": {
                     "control": "textarea"
                 }
+            },
+            {
+                "varname": "cmpreq_sobre_aprovisionamiento",
+                "vardefault": "",
+                "varvalue": "0",
+                "varcaption": "Sobre aprovisionar productos",
+                "varhelp": "",
+                "vartype": "int",
+                "varinput": {
+                    "control": "select",
+                    "source":{
+                        "type":"list",
+                        "keyfield":"id",
+                        "showfield":"const",
+                        "values":[
+                            {"id":"0", "const":"Nada (solo lo que necesito)"},
+                            {"id":"1", "const":"Hasta el mínimo del producto en el almacen del centro de consumo"}
+                        ]
+                    }
+                }
+            },
+            {
+                "varname": "cmpreq_surtir_al_consolidar",
+                "vardefault": "",
+                "varvalue": "0",
+                "varcaption": "Surtir al consolidar",
+                "varhelp": "",
+                "vartype": "bool",
+                "varinput": {
+                    "control": "select",
+                    "source":{
+                        "type":"list",
+                        "keyfield":"id",
+                        "showfield":"const",
+                        "values":[
+                            {"id":"0", "const":"Se toma la cantidad de la requisición directa"},
+                            {"id":"1", "const":"Se toma la cantidad menos lo surtido de la requisición directa"}
+                        ]
+                    }
+                }
+            },
+            {
+                "varname": "cmpreq_catinv_para_surtir",
+                "vardefault": "",
+                "varvalue": "SR",
+                "varcaption": "Categoría de inventario predeterminada para surtir",
+                "varhelp": "",
+                "vartype": "string",
+                "varinput": {
+                    "control": "select",
+                    "source":{
+                        "type":"query",
+                        "query":"select codigo, descripcion from categoria where not ifnull(sys_deleted,0) and tipo=3",
+                        "keyfield":"codigo",
+                        "showfield":"descripcion"
+                    }
+                }
+            },
+            {
+                "varname": "cmpreq_transfer_mode",
+                "vardefault": "",
+                "varvalue": "1",
+                "varcaption": "Modo de aplicación de transferencia",
+                "varhelp": "",
+                "vartype": "int",
+                "varinput": {
+                    "control": "select",
+                    "source":{
+                        "type":"list",
+                        "keyfield":"id",
+                        "showfield":"const",
+                        "values":[
+                            {"id":"1", "const":"Completa"},
+                            {"id":"2", "const":"En 2 pasos"}
+                        ]
+                    }
+                }
             }
         ]
     }

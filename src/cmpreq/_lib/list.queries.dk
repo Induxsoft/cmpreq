@@ -12,16 +12,20 @@ module ""
         CONCAT('$',FORMAT(req.subtotal,4)) AS subtotal,
         CONCAT('$',FORMAT(req.impuestos,4)) AS impuestos,
         CONCAT('$',FORMAT((req.subtotal + req.impuestos),4)) AS total,
-        typ.const AS tipo,
         IF(req.en IS NOT NULL, 'Consolidado', stt.const) AS cstatus,
-        dvs.codigo AS cdivisa,
+        IFNULL(req.consolidacion,0) consolidacion,
+        typ.const AS tipo,
+        IFNULL(cs.descripcion,'') AS csurtido,
+        IFNULL(uni.descripcion,'') unidad,
         IFNULL(pda.partida,'') partida,
-        IFNULL(req.consolidacion,0) consolidacion
+        dvs.codigo AS cdivisa
     FROM cmpreq AS req
         INNER JOIN cmpreq_type typ ON req.tipo = typ.id
         INNER JOIN cmpreq_status AS stt ON req.`status` = stt.id
         INNER JOIN divisa AS dvs ON req.`divisa` = dvs.sys_pk
+        LEFT JOIN rh_unidad_org AS uni ON req.unidad_org = uni.sys_pk
         LEFT JOIN gop_partida AS pda ON req.partida = pda.sys_pk
+        LEFT JOIN cconsumo AS cs ON req.cc = cs.sys_pk
     WHERE NOT IFNULL(req.sys_deleted,0)
         #<conditions>
     "
@@ -44,17 +48,22 @@ module ""
         IFNULL(req.notas,'') AS notas,
         IFNULL(req.en,0) AS en,
         IFNULL(req.consolidacion,0) AS consolidacion,
+        IFNULL(req.unidad_org,0) unidad,
+        IFNULL(req.ejercicio,pto.ejercicio) ejercicio,
+        IFNULL(req.partida,0) partida,
+        IFNULL(req.periodo,0) periodo,
+        IFNULL(req.cc,0) cc,
+        IFNULL(req.origen,0) origen,
         typ.const AS ctipo,
         IFNULL(pda.partida,'') AS partida_pre,
-        IFNULL(req.ejercicio,pto.ejercicio) AS ejercicio,
         IFNULL(CONCAT('[',uni.codigo,'] ',uni.descripcion),'') AS unidad_org,
+        IFNULL(pda.id,'') AS partida_id,
         IFNULL(pda.sys_pk,0) AS ipartida,
         IFNULL(pto.sys_pk,0) AS ipresupuesto,
         IFNULL(uni.sys_pk,0) AS iunidad,
-        IFNULL(pda.id,'') AS partida_id,
-        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
         stt.const AS cstatus,
-        dvs.codigo AS cdivisa
+        dvs.codigo AS cdivisa,
+        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa
     FROM cmpreq AS req
         INNER JOIN cmpreq_type typ ON req.tipo = typ.id
         INNER JOIN cmpreq_status AS stt ON req.`status` = stt.id
@@ -101,6 +110,29 @@ module ""
         INNER JOIN cfgimpuesto AS i ON i.sys_pk = p.impuestos
     WHERE (d.ref_req = @_entity_id)
         #<conditions>
+    "
+
+    @qry_aprovisionar_dcmpreq = "
+    SELECT
+        p.codigo,
+        p.descripcion,
+        d.unidad,
+        d.cantidad,
+        IFNULL(e.existencia,0) AS disponible,
+        IF(d.cantidad < IFNULL(e.existencia,0), 0, d.cantidad - IFNULL(e.existencia,0)) AS faltante,
+        0 AS comprar,
+        0 AS producir,
+        '' AS cproduccion,
+        p.sys_pk AS iproducto,
+        p.iclase,
+        IFNULL(mm.uf_minimo,0) uf_minimo
+    FROM cmpreq r
+        INNER JOIN dcmpreq d ON d.ref_req = r.sys_pk
+        INNER JOIN producto p ON d.producto = p.sys_pk
+        INNER JOIN cconsumo c ON r.cc = c.sys_pk
+        LEFT JOIN existencias e ON c.ialmacen = e.ialmacen AND d.producto = e.fk_producto_iexistencias
+        LEFT JOIN ut_maxmin mm ON c.ialmacen = mm.ialmacen AND d.producto = mm.iproducto
+    WHERE r.sys_pk = @_entity_id
     "
 
     @qry_buscar_producto = "

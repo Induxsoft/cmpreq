@@ -10,7 +10,10 @@ program "instalador"
     // deben estar en la carpeta _install/initial_data
     ref @files_to_import = from.json('[
         "cmpreq_status.csv",
-        "cmpreq_type.csv"
+        "cmpreq_type.csv",
+        "categoria.csv",
+        "cconsumo.csv",
+        "almacen.csv"
     ]')
 
     // Lista de privilegios iniciales (arreglo de id de privilegios)
@@ -30,4 +33,19 @@ program "instalador"
     
     /*************************************************************************************/
     #include "v12.install.lib.dk"
+    /*************************************************************************************/
+    do reconnect(database,qname)
+
+    do dbr.execute(database,"
+        UPDATE cconsumo SET
+            ialmacen = (select sys_pk from almacen where codigo = 'AGS')
+        WHERE codigo = 'CGS'
+    ",@null)
+
+    do dbr.execute(database,"
+        INSERT INTO cmpreq_cc (cc)
+        SELECT sys_pk FROM cconsumo WHERE codigo = 'CGS'
+    ",@null)
+
+    if dbr.is_open(database){ do dbr.close(database) }
 }

@@ -5,7 +5,7 @@ module ""
     @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
 
-    @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,almacen,unidad_org,ejercicio,partida,periodo,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,en,ucreo,uaprobo"
+    @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,almacen,unidad_org,ejercicio,partida,periodo,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,en,cc,origen,ucreo,uaprobo"
     @update_fields = @sys_fields + ",fecha,flimite,tcambio,status,notas,subtotal,impuestos,en,uaprobo"
     
     @create_exclude_fields = "sys_lastuser"
@@ -75,6 +75,91 @@ module ""
         return dbr.list(db,ftext(@qry_buscar_producto),params)
     }
 
+    buscarCProduccion::&db,&params
+    {
+        if dbr.str(db,"SHOW TABLES LIKE 'cproduccion';",@null) == "" { return list.create() }
+        A = 0 //Centros de producción asociados al producto
+        B = 0 //Centros de producción asociados al centro de consumo
+        
+        if dbr.str(db,"SHOW TABLES LIKE 'cproduccion_producto_';",@null) != "" {
+            A = dbr.num(db,"SELECT COUNT(*) FROM cproduccion_producto_ WHERE icentrosproduccion = @iproducto",params)
+        }
+        if dbr.str(db,"SHOW TABLES LIKE 'cconsumo_cproduccion_';",@null) != "" {
+            B = dbr.num(db,"SELECT COUNT(*) FROM cconsumo_cproduccion_ WHERE iconsumo = @icconsumo",params)
+        }
+
+        if A > 0
+        { 
+            if B > 0
+            {
+                sql_cp_p_cc = "
+                SELECT
+                    cp.sys_pk,
+                    cp.codigo,
+                    cp.descripcion
+                FROM cproduccion cp
+                    INNER JOIN cproduccion_producto_ cpp ON cpp.icentrosproduccion = cp.sys_pk
+                    INNER JOIN cconsumo_cproduccion_ cpcc ON cpcc.icproduccion = cp.sys_pk
+                WHERE
+                    NOT IFNULL(cp.sys_deleted,0)
+                    AND cpp.iproductos = @iproducto
+                    AND cpcc.iconsumo = @icconsumo
+                    AND (cp.codigo = @search OR cp.descripcion LIKE CONCAT('%',@search,'%'))
+                "
+                return dbr.list(db,sql_cp_p_cc,params)
+            }
+            else
+            {
+                sql_cp_p = "
+                SELECT
+                    cp.sys_pk,
+                    cp.codigo,
+                    cp.descripcion
+                FROM cproduccion_producto_ cpp
+                    INNER JOIN cproduccion cp ON cpp.icentrosproduccion = cp.sys_pk
+                WHERE
+                    NOT IFNULL(cp.sys_deleted,0)
+                    AND cpp.iproductos = @iproducto
+                    AND (cp.codigo = @search OR cp.descripcion LIKE CONCAT('%',@search,'%'))
+                "
+                return dbr.list(db,sql_cp_p,params)
+            }
+        }
+        else
+        {
+            if B > 0
+            {
+                sql_cp_cc = "
+                SELECT
+                    cp.sys_pk,
+                    cp.codigo,
+                    cp.descripcion
+                FROM cconsumo_cproduccion_ cpcc
+                    INNER JOIN cproduccion cp ON cpcc.icproduccion = cp.sys_pk
+                WHERE
+                    NOT IFNULL(cp.sys_deleted,0)
+                    AND cpcc.iconsumo = @icconsumo
+                    AND (cp.codigo = @search OR cp.descripcion LIKE CONCAT('%',@search,'%'))
+                "
+                return dbr.list(db,sql_cp_cc,params)
+            }
+            else
+            {
+                sql_cp = "
+                SELECT
+                    sys_pk,
+                    codigo,
+                    descripcion
+                FROM cproduccion
+                WHERE
+                    NOT IFNULL(sys_deleted,0)
+                    AND (codigo = @search OR descripcion LIKE CONCAT('%',@search,'%'))
+                "
+                return dbr.list(db,sql_cp,params)
+            }
+        }
+    }
+
     obtenerFultimo::&db,&params
     {
         new data
@@ -114,9 +199,15 @@ module ""
         params<"zimpuesto"> : zimpuesto
     }
 
-    prepareList::&db,&params,&data
+    setGParams::&db,&params
     {
-        data<"list_status*"> : dbr.list(db,"SELECT * FROM cmpreq_status",@null)
+        if not(field.exist(params,"currency_decs")){ params<"currency_decs"> : parse.num(dbr.vars.get(db,"FXCA001")) }
+        if not(field.exist(params,"volume_decs")){ params<"volume_decs"> : parse.num(dbr.vars.get(db,"FXCA002")) }
+        if not(field.exist(params,"visible_currency_decs")){ params<"visible_currency_decs"> : parse.num(dbr.vars.get(db,"V12-0A-001")) }
+        if not(field.exist(params,"visible_volume_decs")){ params<"visible_volume_decs"> : parse.num(dbr.vars.get(db,"V12-0A-002")) }
+        if not(field.exist(params,"divisa")){ params<"divisa"> : parse.num(dbr.vars.get(db,"FXCA013")) }
+        if not(field.exist(params,"pais")){ params<"pais"> : parse.num(dbr.vars.get(db,"V12-00-001")) }
+        if not(field.exist(params,"idioma")){ params<"idioma"> : parse.num(dbr.vars.get(db,"V12-00-002")) }
     }
 
     setPrintTitles::&db,&data
@@ -136,6 +227,9 @@ module ""
     prepareView::&db,&params,&data
     {
         isNew = (@@(params,"$_entity_id") == "_new")
+        view =  @@(params,"$_view")
+
+        if not(isNew) && not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
 
         if isNew
         {
@@ -150,10 +244,11 @@ module ""
 
             using data
             {
-                @"list_tipos*": dbr.list(db,"SELECT * FROM cmpreq_type",@null)
+                @"list_tipos*": dbr.list(db,"SELECT * FROM cmpreq_type WHERE id != 4",@null)
                 @"list_series*": dbr.list(db, @qry_list_series, args)
                 @"list_status*": dbr.list(db,"SELECT * FROM cmpreq_status WHERE id < 10",@null)
                 @"list_divisas*": dbr.list(db, @qry_list_divisas, @null)
+                @"list_csurtido*": dbr.list(db,"SELECT b.sys_pk, b.descripcion FROM cmpreq_cc a INNER JOIN cconsumo b ON a.cc = b.sys_pk",@null)
                 @"list_almacenes*": dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM almacen WHERE NOT IFNULL(sys_deleted,0)",@null)
                 @"list_clases*": dbr.list(db,"SELECT id, const FROM cclaseproducto",@null)
                 @"list_lineas*": list.create()
@@ -161,20 +256,47 @@ module ""
                 @"list_deptos*": dbr.list(db,"SELECT sys_pk, codigo, descripcion FROM departamento WHERE NOT IFNULL(sys_deleted,0)",@null)
             }
         }
+        else if view == "aprovisionar"
+        {
+            do setGParams(db,params)
+            params<"sobre_aprovisionar"> : parse.num(dbr.vars.get(db,"cmpreq_sobre_aprovisionamiento"))
+
+            data<"dcmpreq*"> : dbr.list(db,@qry_aprovisionar_dcmpreq,params)
+        }
+        else if view == "surtir"
+        {
+            do setGParams(db,params)
+            params<"surtir_al_consolidar"> : parse.num(dbr.vars.get(db,"cmpreq_surtir_al_consolidar"))
+        }
         else
         {
             do setZonaImpuesto(db,params)
 
-            if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
             data<"dcmpreq*"> : dbr.list(db,ftext(@qry_dcmpreq),params)
+        }
+    }
+
+    prepareList::&db,&params,&data
+    {
+        using data
+        {
+            @"list_status*": dbr.list(db,"SELECT * FROM cmpreq_status",@null)
+            @"list_tipos*": dbr.list(db,"SELECT * FROM cmpreq_type",@null)
+            @"list_csurtido*": dbr.list(db,"SELECT b.sys_pk, b.descripcion FROM cmpreq_cc a INNER JOIN cconsumo b ON a.cc = b.sys_pk",@null)
         }
     }
 
     evaluateFilters::&params
     {
+        if not(field.exist(params,"fil_status")) { params<"fil_status"> : -1 }
+        if not(field.exist(params,"fil_type")) { params<"fil_type"> : -1 }
+        if not(field.exist(params,"fil_csurtido")) { params<"fil_csurtido"> : -1 }
+
         conditions = ""
 
-        if replace(@@(params,"$fil_status"),"*","") != "" { conditions = conditions + "AND req.`status` = @fil_status" }
+        if @@(params,"#fil_type") > 0 { conditions = conditions + "AND req.tipo = @fil_type " }
+        if @@(params,"#fil_csurtido") > 0 { conditions = conditions + "AND req.cc = @fil_csurtido " }
+        if @@(params,"#fil_status") >= 0 { conditions = conditions + "AND req.`status` = @fil_status " }
 
         if trim(@@(params,"$fil_text")) != "" {
             conditions = conditions + "AND (req.referencia LIKE CONCAT('%',@fil_text,'%') OR IFNULL(pda.partida,'') LIKE CONCAT('%',@fil_text,'%'))"
@@ -246,15 +368,15 @@ module ""
         @list_query = ftext(@list_query)
     }
 
+    //#region aprobar()
     req.aprobar::&db,&params,&data
     {
         if @@(data,"#status") != @stt_aprobado { return }
-        
-        ref req = entity.read(db,params)   
-        
+        ref req = entity.read(db,params)
         if field.exist(req,"_detalle"){do field.remove(req,"_detalle")}
         
-        if @@(req,"$tipo") == "D"
+        // Si es una requisición directa que afecta presupuesto de gastos de operación.
+        if not(@@(req,"#consolidacion")) && @@(req,"#partida") > 0
         {
             if @@(req,"#ipresupuesto")>0 && dbr.num(db,"SELECT status FROM gop_presupuesto WHERE sys_pk = @ipresupuesto",req) < 3
             { do rise_error(500,"¡No es posible aprobar la requisición!\r\nEs necesario aprobar el presupuesto de la partida presupuestal.") }
@@ -285,15 +407,17 @@ module ""
                 { do rise_error(500,"¡No fue posible aprobar!\r\nHubo un problema al comprometer el ejercicio correspondiente.") }
             }
         }
+        // Cuando se trata de una consolidación, las requisiciones consolidadas ya fueron aprobadas
     }
 
+    //#region cancelar()
     req.cancelar::&db,&params,&data
     {
         if @@(data,"#status") != @stt_adm_cancelado { return }
-
         ref req = entity.read(db,params)
             
-        if @@(req,"$tipo") == "D"
+        // Si es una requisición directa que afecta presupuesto de gastos de operación.
+        if not(@@(req,"#consolidacion")) && @@(req,"#partida") > 0
         {
             new gop_mov_data
             {
@@ -312,7 +436,7 @@ module ""
             { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente.") }
         }
 
-        if @@(req,"$tipo") == "C"
+        if @@(req,"#consolidacion")
         {
             ref list_reqs = dbr.list(db,"SELECT sys_pk AS _entity_id FROM cmpreq WHERE en = @_entity_id",params)
             for i = 0; i < list.count(list_reqs)
@@ -320,21 +444,25 @@ module ""
                 ref itm = list.obj(list_reqs,i)
                 ref req = entity.read(db,itm)
 
-                new gop_mov_data
+                // Si la requisición consolidada afecta presupuesto de gastos de operación.
+                if @@(req,"#partida") > 0
                 {
-                    @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
-                    @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
-                    @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
-                    @"comprometido": (@@(req,"#importe") * -1) //(decimal) Monto (+\-) de la afectación.
-                    @"ejercido": 0 //(decimal) Monto (+\-) de la afectación.
-                    @"det": "DET070" //(string) Código DET (Data Element Type) del elemento que realiza la afectación.
-                    @"det_id": @@(req,"#sys_pk") //(int) Clave primaria del elemento que realiza la afectación.
-                    @"usuario": @@(@http_context, "$session/user/uid") //(string) UserId del usuario logueado que realiza la afectación.
-                    @"notas": "Requisición cancelada" //(string) Descripción sobre el movimiento de afectación de presupuesto.
+                    new gop_mov_data
+                    {
+                        @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                        @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
+                        @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
+                        @"comprometido": (@@(req,"#importe") * -1) //(decimal) Monto (+\-) de la afectación.
+                        @"ejercido": 0 //(decimal) Monto (+\-) de la afectación.
+                        @"det": "DET070" //(string) Código DET (Data Element Type) del elemento que realiza la afectación.
+                        @"det_id": @@(req,"#sys_pk") //(int) Clave primaria del elemento que realiza la afectación.
+                        @"usuario": @@(@http_context, "$session/user/uid") //(string) UserId del usuario logueado que realiza la afectación.
+                        @"notas": "Requisición cancelada" //(string) Descripción sobre el movimiento de afectación de presupuesto.
+                    }
+                    // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
+                    if not(pregop.partida.movimiento(db,gop_mov_data))
+                    { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
                 }
-                // if not(pregop.partida.comprometido(db, @@(req,"$partida_id"), @@(req,"#ejercicio"), @@(req,"#periodo"), (@@(req,"#importe") * -1)))
-                if not(pregop.partida.movimiento(db,gop_mov_data))
-                { do rise_error(500,"¡No fue posible cancelar!\r\nHubo un problema al afectar el comprometido del ejercicio correspondiente de la requisición: " + @@(req,"$referencia")) }
             }
 
             new reg
@@ -348,6 +476,7 @@ module ""
         }
     }
 
+    //#region changeStatus()
     req.changeStatus::&db,&params,&data
     {
         @use_transaction = @false
@@ -431,6 +560,7 @@ module ""
         }
     }
 
+    //#region getStockKeepingProducts()
     req.getStockKeepingProducts::&db,&params
     {
         do setZonaImpuesto(db,params)
@@ -475,6 +605,7 @@ module ""
         return dbr.list(db,ftext(@qry_buscar_producto),params)
     }
 
+    //#region calculateTaxes()
     req.calculateTaxes::&product
     {
         costo = @@(product,"#precio")
@@ -514,6 +645,7 @@ module ""
         return taxes
     }
 
+    //#region setStockKeeping()
     req.setStockKeeping::&db,&params,&data
     {
         ref products = req.getStockKeepingProducts(db,params)
@@ -565,6 +697,7 @@ module ""
         }
     }
 
+    //#region list()
     req.list::&db,&params
     {
         do dbr.apps.action.grant("TD10")
@@ -589,6 +722,7 @@ module ""
         }
     }
 
+    //#region read()
     req.read::&db,&params
     {
         do dbr.apps.action.grant("TD10")
@@ -611,11 +745,15 @@ module ""
         }
     }
 
+    //#region blank()
     req.blank::&db,&params
     {
         do dbr.apps.action.grant("TD10")
 
-        new data {}
+        new data
+        {
+            @"fecha": date_str(now(),"yyyy-MM-dd")
+        }
         do prepareView(db,params,data)
         return data
 
@@ -629,6 +767,7 @@ module ""
         }
     }
 
+    //#region create()
     req.create::&db,&params,&data
     {
         @use_transaction = @false
@@ -659,22 +798,26 @@ module ""
             @"folio": @@(infoFolio,"#sys_pk")
             @"fecha": @@(data,"$fecha")
             @"flimite": @@(data,"$flimite")
-            @"subtotal": 0
-            @"impuestos": 0
+            @"almacen": @@(data,"#almacen")
+            @"cc": @@(data,"#cc")
             @"divisa": @@(data,"#divisa")
             @"tcambio": @@(data,"#tcambio")
             @"status": @@(data,"#status")
-            @"almacen": @@(data,"#almacen")
+            @"subtotal": 0
+            @"impuestos": 0
         }
 
         if @@(cmpreq,"#tipo") <= 0 { do rise_error(511,"No se ha indicado el tipo de requisición.") }
         if @@(cmpreq,"$fecha") == "" { do rise_error(512,"No se establecio la fecha de elaboración.") }
-        if @@(cmpreq,"#unidad_org") < 1 { do rise_error(512,"No se ha indicado la unidad organizacional.") }
-        if @@(cmpreq,"#almacen") < 1 { do rise_error(513,"No se ha indicado el almacén.") }
-        if @@(cmpreq,"#divisa") < 1 { do rise_error(514,"No se ha indicado una divisa.") }
-        if @@(cmpreq,"#tcambio") <= 0 { do rise_error(515,"Debe especificar un tipo de cambio válido.") }
+        if @@(cmpreq,"#unidad_org") < 1 && @@(cmpreq,"#tipo") != @type_req_consl { do rise_error(513,"No se ha indicado la unidad organizacional.") }
+        if @@(cmpreq,"#almacen") < 1 && @@(cmpreq,"#tipo") != @type_req_consl { do rise_error(514,"No se ha indicado el almacén.") }
+        if @@(cmpreq,"#cc") < 1 { do rise_error(515,"No se ha indicado el centro de surtido.") }
+        if @@(cmpreq,"#divisa") < 1 { do rise_error(516,"No se ha indicado una divisa.") }
+        if @@(cmpreq,"#tcambio") <= 0 { do rise_error(517,"Debe especificar un tipo de cambio válido.") }
         if @@(cmpreq,"#status") < 0 { cmpreq<"status"> : @stt_borrador }
         if @@(cmpreq,"$flimite") == "" { do field.remove(cmpreq,"flimite") }
+        if @@(cmpreq,"#unidad_org") < 1 { do field.remove(cmpreq,"unidad_org") }
+        if @@(cmpreq,"#almacen") < 1 { do field.remove(cmpreq,"almacen") }
 
         add_products = parse.bool(@@(data,"$add-products"))
         affect_gop = parse.bool(@@(data,"$affect-gop"))
@@ -745,6 +888,7 @@ module ""
         }
     }
 
+    //#region genArrayDetails()
     req.genArrayDetails::&data
     {
         new cmpreq
@@ -812,6 +956,7 @@ module ""
         return cmpreq
     }
 
+    //#region update()
     req.update::&db,&params,&data
     {
         @use_transaction = @false

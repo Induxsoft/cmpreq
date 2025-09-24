@@ -43,8 +43,8 @@ program "Controlador de eventos"
             @keyfield = "sys_pk"
 
             ref req = dbr.rec(db,ftext(@qry_cmpreq),params)
-            // Finalizar proceso si la requisición no es 'Directa'.
-            if @@(req,"#consolidacion") { break }
+            // Finalizar proceso si la requisición no es 'Directa', o no afecta presupuesto de gastos de operación
+            if @@(req,"#consolidacion") || @@(req,"#partida") < 1 { break }
 
             new gop_mov_data
             {

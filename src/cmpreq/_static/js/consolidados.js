@@ -6,14 +6,14 @@ var consolidados =
         init()
         {
             const btn_get_folio = document.getElementById("btn_get_folio");
-            const ik_unidad_org = document.getElementById("ik_unidad_org");
+            // const ik_unidad_org = document.getElementById("ik_unidad_org");
             const sel_divisa = document.getElementById("sel_divisa");
             
             if (btn_get_folio) btn_get_folio.addEventListener("click", () => { this.getFolio() });
-            if (ik_unidad_org) ik_unidad_org.change_event = (data) => {
+            /* if (ik_unidad_org) ik_unidad_org.change_event = (data) => {
                 let params = {u:Number(data?.sys_pk??0)}
                 this.fillSelect("sel_almacen","sys_pk","descripcion",this.url_get_unialm,params);
-            };
+            }; */
             if (sel_divisa) sel_divisa.addEventListener("change", (event) => { this.setTipoCambio(event.target) });
 
             this.setKeyboardShortcuts();
@@ -269,7 +269,7 @@ var consolidados =
             let array = table?.DataArray ?? [];
             this.fullProdArray.push(data);
 
-            let index = array.findIndex(obj => obj.sys_pk === data.sys_pk && obj.precio === data.precio);
+            let index = array.findIndex(obj => obj.sys_pk == data.sys_pk && obj.precio == data.precio && obj.unidad == data.unidad);
             if(index < 0)
             {
                 let _productos = this.cleanDataArray(table);
