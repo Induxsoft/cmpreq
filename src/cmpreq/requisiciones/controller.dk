@@ -2,36 +2,38 @@
 #!
 module "RequisicionesController"
 {
+    point @delete to req.delete
+
     switch @@(params,"$_view")
     {
         case "buscar-unidad-org"
         {
-            point @list to buscarUnidad
+            point @list to req.buscarUnidad
             break
         }
         case "buscar-partida-pre"
         {
-            point @list to buscarPartida
+            point @list to req.buscarPartida
             break
         }
         case "buscar-producto"
         {
-            point @list to buscarProducto
+            point @list to req.buscarProducto
             break
         }
         case "buscar-cproduccion"
         {
-            point @list to buscarCProduccion
+            point @list to req.buscarCProduccion
             break
         }
         case "obtener-lineas"
         {
-            point @list to obtenerLineaXClase
+            point @list to req.obtenerLineaXClase
             break
         }
         case "obtener-fultimo"
         {
-            point @read to obtenerFultimo
+            point @read to req.obtenerFultimo
             break
         }
         case "change-status"
@@ -44,6 +46,8 @@ module "RequisicionesController"
             @form_view = "aprovisionar.dk"
 
             point @read to req.read
+            point @create to req.supply
+            point @update to req.supply
             break
         }
         case "surtir"
@@ -51,6 +55,8 @@ module "RequisicionesController"
             @form_view = "surtir.dk"
 
             point @read to req.read
+            point @create to req.stock
+            point @update to req.stock
             break
         }
         default
@@ -65,7 +71,6 @@ module "RequisicionesController"
             point @blank to req.blank
             point @create to req.create
             point @update to req.update
-            point @delete to req.delete
             break
         }
     }

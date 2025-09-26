@@ -75,29 +75,14 @@ module "Funciones de propósito general:lib"
         return list
     }
 
-    function curr_url()
+    function base_url(withPort)
     {
-        if not(isset("@http_context")) && isset("@crud_context") { ref @http_context = ifnull(@@(@crud_context,"&http"),record.create()) }
-        ref parameters = ifnull(@@(@http_context,"&request/get"),record.create())
+        prot = ifstr(parse.bool(@@(@http_context,"$request/headers/HTTPS")),"https","http")
+        host = @@(@http_context, "$request/headers/HTTP_HOST")
+        port = @@(@http_context, "$request/headers/SERVER_PORT")
 
-        v12_params = "_pack,_program,_entities_type,_entity_id,_view,_operation"
-        ref v12params = record.copy(parameters,v12_params)
-
-        v12_path = "/!/_pack/_program/_entity_id/_view/"
-        go foreach.fstr(key:key, value:value) with(v12params)
-        {
-            v12_path = replace(v12_path,key,value)
-        }
-        v12_path = replace(v12_path,"//","/")
-
-        http_args = "?"
-        go foreach.fstr(key:key, value:value) with(parameters)
-        {
-            if not(containsword(key,v12_params)) { http_args = http_args + key + "=" + value + "&" }
-        }
-        http_args = rremove(http_args,1)
-
-        return path.concat(v12_path,http_args)
+        if parse.bool(withPort) { return prot+"://"+host+":"+port }
+        return prot+"://"+host
     }
 
     function form(name,type,&obj)
@@ -171,14 +156,18 @@ module "Funciones de propósito general:lib"
         return list
     }
 
-    function AppExist(&db,packId)
+    function PackExist(&db,packId)
     {
         new p { @"id": packId }
-        ref InstalledApps = dbr.list(db,"SELECT * FROM sys_app_catalog WHERE pack_id = @id;",p)
-        exist = (list.count(InstalledApps) > 0)
-        return exist
 
-        exception{ return @false }
+        apps = dbr.num(db,"SELECT COUNT(*) FROM sys_app_catalog WHERE pack_id = @id;",p)
+        return apps > 0
+
+        exception
+        {
+            do pop_exception()
+            return @false
+        }
     }
 
     function GetPkUsr(&db,usrId)

@@ -1,0 +1,87 @@
+#include "dkli.dkh"
+#!
+if not(isset("entity")) && isset("cmpreq") { ref entity = cmpreq }
+if not(isset("entity")) && isset("cmpcon") { ref entity = cmpcon }
+if not(isset("entity")) { ref entity = record.create() }
+
+_consolidacion = @@(entity,"#consolidacion")
+_status = @@(entity,"#status")
+_ejercicio = @@(entity,"#ejercicio")
+_partida = @@(entity,"$partida_pre")
+_periodo = ""
+_notas = @@(entity,"$notas")
+
+go foreach.lobj(value:itm) with(@periodos)
+{
+    if @@(itm,"#id") == @@(entity,'#periodo') { _periodo = @@(itm,"$const") }
+}
+#$
+section(id="cmpreq-info")
+{
+    div(class="row mb-2")
+    {
+        div(class="col-12 col-md-4 d-md-flex align-items-center justify-content-md-start gap-1")
+        {
+            h6(class="my-0"){"Tipo:"}
+            p(class="my-0"){"#<@@(cmpreq,'$ctipo')>"}
+        }
+        #!
+        if not(_consolidacion)
+        {
+            #$
+            div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-end gap-1")
+            {
+                h6(class="my-0"){"Unidad Organizacional:"}
+                p(class="my-0"){"#<@@(cmpreq,'$unidad_org')>"}
+            }
+        }
+        #$
+        div(class="d-flex justify-content-end gap-2 flex-wrap")
+        {""
+            #!
+            if _partida != ""
+            {
+                #$    
+                div{ b{"Ejercicio: "} span(id="spn-ejercicio"){"#<_ejercicio>"} }
+                div{ b{"Partida presupuestal: "} span(id="spn-partida"){"#<_partida>"} }
+                div{ b{"Periodo: "} span(id="spn-periodo"){"#<_periodo>"} }
+            }
+            #$
+        }
+        div(class="col-auto")
+        {
+            span{ b{"Elaboración: "} "#<@@(entity,'$fecha')>" }
+        }
+        div(class="col-auto")
+        {
+            span{ b{"Vencimiento: "} "#<@@(entity,'$flimite')>" }
+        }
+        div(class="col-auto")
+        {
+            span{ b{"Divisa: "} "#<@@(entity,'$ddivisa')>" }
+        }
+        div(class="col-auto")
+        {
+            span{ b{"T. Cambio: "} "#<@@(entity,'#tcambio')>" }
+        }
+        #!
+        if not(_consolidacion)
+        {
+            #$
+            div(class="col-auto")
+            {
+                span{ b{"Almacén: "} "#<@@(entity,'$dalmacen')>" }
+            }
+        }
+        #$
+        div(class="col-auto")
+        {
+            span{ b{"C. Surtido: "} "#<@@(entity,'$dconsumo')>" }
+        }
+        div(class="col-12")
+        {
+            b{"Notas:"}
+            div(style="white-space:pre-wrap;"){"#<_notas>"}
+        }
+    }
+}

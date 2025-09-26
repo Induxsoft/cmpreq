@@ -146,7 +146,7 @@ module ""
         if @@(cmpcon,"#cc") < 1 { do rise_error(512,"No se ha indicado el centro de surtido.") }
         if @@(cmpcon,"#divisa") < 1 { do rise_error(513,"No se ha indicado una divisa.") }
         if @@(cmpcon,"#tcambio") <= 0 { do rise_error(514,"Debe especificar un tipo de cambio válido.") }
-        if @@(cmpcon,"#status") < 0 { cmpcon<"status"> : @stt_borrador }
+        if @@(cmpcon,"#status") < 0 { cmpcon<"status"> : @stt_req_borrador }
         if @@(cmpcon,"$flimite") == "" { do field.remove(cmpcon,"flimite") }
         
         ref entity = @@(entity.create(db,params,cmpcon),"&cmpcon")

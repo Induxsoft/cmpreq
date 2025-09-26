@@ -23,11 +23,11 @@ module "form.dk"
 
     @consolidacion = @@(entity,"#consolidacion")
     @curr_status = @@(entity,"#status")
-    @show_btn_xaprobar = (@curr_status == @stt_borrador)
-    @show_btn_aprobar = (@curr_status == @stt_xaprobar)
-    @show_btn_nproceso = (@curr_status == @stt_aprobado)
+    @show_btn_xaprobar = (@curr_status == @stt_req_borrador)
+    @show_btn_aprobar = (@curr_status == @stt_req_xaprobar)
+    @show_btn_nproceso = (@curr_status == @stt_req_aprobado)
     @show_btn_cancelar = containsword(@curr_status, "0,1,10,20")
-    @enable_editing = (@curr_status == @stt_nproceso)
+    @enable_editing = (@curr_status == @stt_req_nproceso)
 
     function fixEdtData(&list,length)
     {
@@ -76,11 +76,11 @@ module "form.dk"
         url_cc = replace(@CMP_CC,"{ireq}",@_entity_id)
 
         if @enable_editing {#$ a(href="#<url_cc>" class="#<btn_cls>" type="button" id="btn_cc"){$"Comparar precios"} #!}
-        if @show_btn_nproceso {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_nproceso>" title="Cambiar estado"){$"En proceso"} #!}
+        if @show_btn_nproceso {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_nproceso>" title="Cambiar estado"){$"En proceso"} #!}
 
-        if @show_btn_xaprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_xaprobar>" title="Cambiar estado"){$"#<@ICON_HOURGLASS> Por Aprobar"} #!}
-        if @show_btn_aprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_aprobado>" title="Cambiar estado"){$"#<@ICON_CHECK> Aprobar"} #!}
-        if @show_btn_cancelar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_cancelado>" title="Cambiar estado"){$"#<@ICON_FILE_CANCEL> Cancelar"} #!}
+        if @show_btn_xaprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_xaprobar>" title="Cambiar estado"){$"#<@ICON_HOURGLASS> Por Aprobar"} #!}
+        if @show_btn_aprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_aprobado>" title="Cambiar estado"){$"#<@ICON_CHECK> Aprobar"} #!}
+        if @show_btn_cancelar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_cancelado>" title="Cambiar estado"){$"#<@ICON_FILE_CANCEL> Cancelar"} #!}
     }
     point general_act to header_act
     new nav_config

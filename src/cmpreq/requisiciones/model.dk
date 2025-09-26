@@ -1,21 +1,31 @@
 #include "dkli.dkh"
 #!
-module ""
+module "Requisiciones :req"
 {
-    @table_name = "cmpreq"
-    @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
+    #include "webcl.dkh"
+    if file.exists("dprod/orden/model.dk") {
+        #include "dprod/orden/model.dk"
+    }
 
-    @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,almacen,unidad_org,ejercicio,partida,periodo,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,en,cc,origen,ucreo,uaprobo"
-    @update_fields = @sys_fields + ",fecha,flimite,tcambio,status,notas,subtotal,impuestos,en,uaprobo"
-    
-    @create_exclude_fields = "sys_lastuser"
-    @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
-    
-    @create_alias_fields = ""
-    @update_alias_fields = ""
-
-    @list_query = @qry_list_cmpreq
-    @read_query = @qry_cmpreq
+    setGlobalConfigs::
+    {
+        @table_name = "cmpreq"
+        @keyfield = "sys_pk"
+        @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
+        
+        @create_fields = @sys_fields + ",tipo,referencia,folio,fecha,flimite,almacen,unidad_org,ejercicio,partida,periodo,divisa,tcambio,status,notas,subtotal,impuestos,consolidacion,en,cc,origen,ucreo,uaprobo"
+        @update_fields = @sys_fields + ",fecha,flimite,tcambio,status,notas,subtotal,impuestos,en,uaprobo"
+        
+        @create_exclude_fields = "sys_lastuser"
+        @update_exclude_fields = "sys_pk,sys_guid,sys_dtcreated,sys_user,status"
+        
+        @create_alias_fields = ""
+        @update_alias_fields = ""
+        
+        @list_query = @qry_list_cmpreq
+        @read_query = @qry_cmpreq
+    }
+    do setGlobalConfigs()
 
     buscarUnidad::&db,&params
     {
@@ -75,6 +85,7 @@ module ""
         return dbr.list(db,ftext(@qry_buscar_producto),params)
     }
 
+    //#region buscarCProduccion()
     buscarCProduccion::&db,&params
     {
         if dbr.str(db,"SHOW TABLES LIKE 'cproduccion';",@null) == "" { return list.create() }
@@ -199,6 +210,8 @@ module ""
         params<"zimpuesto"> : zimpuesto
     }
 
+    
+    //#region setGParams()
     setGParams::&db,&params
     {
         if not(field.exist(params,"currency_decs")){ params<"currency_decs"> : parse.num(dbr.vars.get(db,"FXCA001")) }
@@ -210,6 +223,7 @@ module ""
         if not(field.exist(params,"idioma")){ params<"idioma"> : parse.num(dbr.vars.get(db,"V12-00-002")) }
     }
 
+    //#region setPrintTitles()
     setPrintTitles::&db,&data
     {
         using data
@@ -224,12 +238,20 @@ module ""
         }
     }
 
+    //#region prepareView()
     prepareView::&db,&params,&data
     {
         isNew = (@@(params,"$_entity_id") == "_new")
         view =  @@(params,"$_view")
 
-        if not(isNew) && not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
+        if not(isNew)
+        {
+            do setGlobalConfigs()
+            do setGParams(db,params)
+            do setZonaImpuesto(db,params)
+
+            if not(field.exist(data,"cmpreq")) { data<"cmpreq*"> : entity.read(db,params) }
+        }
 
         if isNew
         {
@@ -258,24 +280,23 @@ module ""
         }
         else if view == "aprovisionar"
         {
-            do setGParams(db,params)
             params<"sobre_aprovisionar"> : parse.num(dbr.vars.get(db,"cmpreq_sobre_aprovisionamiento"))
 
             data<"dcmpreq*"> : dbr.list(db,@qry_aprovisionar_dcmpreq,params)
         }
         else if view == "surtir"
         {
-            do setGParams(db,params)
             params<"surtir_al_consolidar"> : parse.num(dbr.vars.get(db,"cmpreq_surtir_al_consolidar"))
+
+            data<"dcmpreq*"> : dbr.list(db,@qry_surtir_dcmpreq,params)
         }
         else
         {
-            do setZonaImpuesto(db,params)
-
             data<"dcmpreq*"> : dbr.list(db,ftext(@qry_dcmpreq),params)
         }
     }
 
+    //#region prepareList()
     prepareList::&db,&params,&data
     {
         using data
@@ -286,6 +307,7 @@ module ""
         }
     }
 
+    //#region evaluateFilters()
     evaluateFilters::&params
     {
         if not(field.exist(params,"fil_status")) { params<"fil_status"> : -1 }
@@ -369,9 +391,9 @@ module ""
     }
 
     //#region aprobar()
-    req.aprobar::&db,&params,&data
+    aprobar::&db,&params,&data
     {
-        if @@(data,"#status") != @stt_aprobado { return }
+        if @@(data,"#status") != @stt_req_aprobado { return }
         ref req = entity.read(db,params)
         if field.exist(req,"_detalle"){do field.remove(req,"_detalle")}
         
@@ -381,18 +403,18 @@ module ""
             if @@(req,"#ipresupuesto")>0 && dbr.num(db,"SELECT status FROM gop_presupuesto WHERE sys_pk = @ipresupuesto",req) < 3
             { do rise_error(500,"¡No es posible aprobar la requisición!\r\nEs necesario aprobar el presupuesto de la partida presupuestal.") }
             
-            if @@(req,"#ipartida")>0 && dbr.num(db,"SELECT COUNT(sys_pk) FROM gop_partida WHERE padre = @ipartida",req) > 0
+            if @@(req,"#partida")>0 && dbr.num(db,"SELECT COUNT(sys_pk) FROM gop_partida WHERE padre = @partida",req) > 0
             { do rise_error(500,"No se puede afectar la requisición porque la partida presupuestal tiene sub-partidas, relacione la requisción a la sub-partida correspondiente") }
 
-            if @@(req,"#ipartida")>0
+            if @@(req,"#partida")>0
             {
-                ref pre = pregop.partida.importes(db, @@(req,"#ipartida"), @@(req,"#periodo"))
+                ref pre = pregop.partida.importes(db, @@(req,"#partida"), @@(req,"#periodo"))
 
                 if @@(req,"#importe") > @@(pre,"#disponible") { do rise_error(500,"¡No fue posible aprobar!\r\nEl total de la requisición supera el disponible del presupuesto en el periodo seleccionado.") }
 
                 new gop_mov_data
                 {
-                    @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                    @"sys_pk": @@(req,"#partida") //(int) Clave primaria de la partida.
                     @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
                     @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
                     @"comprometido": @@(req,"#importe") //(decimal) Monto (+\-) de la afectación.
@@ -411,7 +433,7 @@ module ""
     }
 
     //#region cancelar()
-    req.cancelar::&db,&params,&data
+    cancelar::&db,&params,&data
     {
         if @@(data,"#status") != @stt_adm_cancelado { return }
         ref req = entity.read(db,params)
@@ -421,7 +443,7 @@ module ""
         {
             new gop_mov_data
             {
-                @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                @"sys_pk": @@(req,"#partida") //(int) Clave primaria de la partida.
                 @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
                 @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
                 @"comprometido": (@@(req,"#importe") * -1) //(decimal) Monto (+\-) de la afectación.
@@ -449,7 +471,7 @@ module ""
                 {
                     new gop_mov_data
                     {
-                        @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                        @"sys_pk": @@(req,"#partida") //(int) Clave primaria de la partida.
                         @"referencia": @@(req,"$referencia") //(string) Referencia del elemento que realiza la afectación.
                         @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
                         @"comprometido": (@@(req,"#importe") * -1) //(decimal) Monto (+\-) de la afectación.
@@ -477,15 +499,15 @@ module ""
     }
 
     //#region changeStatus()
-    req.changeStatus::&db,&params,&data
+    changeStatus::&db,&params,&data
     {
         @use_transaction = @false
 
         action_code = ""
         new_status = @@(data,"#status")
 
-        if new_status == @stt_aprobado { action_code = "TD13" }
-        else if new_status == @stt_nproceso { action_code = "TD14" }
+        if new_status == @stt_req_aprobado { action_code = "TD13" }
+        else if new_status == @stt_req_nproceso { action_code = "TD14" }
         else if new_status == @stt_adm_cancelado { action_code = "TD15" }
         else { action_code = "TD12" }
 
@@ -502,7 +524,7 @@ module ""
             @"status": new_status
         }
 
-        if new_status == @stt_aprobado
+        if new_status == @stt_req_aprobado
         {
             cmpreq<"uaprobo"> : lib.GetPkUsr(db, @@(@http_context, "$session/user/uid"))
 
@@ -513,7 +535,7 @@ module ""
                 if _detalle == "" { _detalle = "[]" }
                 if _detalle != "[]"
                 {
-                    ref req = entity.update(db,params,req.genArrayDetails(data))
+                    ref req = entity.update(db,params,genArrayDetails(data))
                     cmpreq<"sys_recver"> : @@(req,"#sys_recver")
                 }
             }
@@ -534,11 +556,11 @@ module ""
                 cmpreq<"impuestos"> : @@(tt,"#impuestos")
             }
 
-            do req.aprobar(db,params,data)
+            do aprobar(db,params,data)
         }
-        if new_status == @stt_cancelado
+        if new_status == @stt_req_cancelado
         {
-            do req.cancelar(db,params,data)
+            do cancelar(db,params,data)
         }
 
         ref entity = dbr.save(db,"cmpreq",cmpreq)
@@ -549,19 +571,11 @@ module ""
 
         return entity
 
-        exception
-        {
-            do errordet(@false)
-            if dbr.in_transaction(db) { do dbr.rollback(db) }
-            code = last_error_code()
-            error = last_error()
-            do dbr.apps.action.log()
-            do rise_error(code,error)
-        }
+        exception{ do catch(db,params,data) }
     }
 
     //#region getStockKeepingProducts()
-    req.getStockKeepingProducts::&db,&params
+    getStockKeepingProducts::&db,&params
     {
         do setZonaImpuesto(db,params)
 
@@ -606,7 +620,7 @@ module ""
     }
 
     //#region calculateTaxes()
-    req.calculateTaxes::&product
+    calculateTaxes::&product
     {
         costo = @@(product,"#precio")
         cantidad = @@(product,"#cantidad")
@@ -646,9 +660,9 @@ module ""
     }
 
     //#region setStockKeeping()
-    req.setStockKeeping::&db,&params,&data
+    setStockKeeping::&db,&params,&data
     {
-        ref products = req.getStockKeepingProducts(db,params)
+        ref products = getStockKeepingProducts(db,params)
         ref dcmpreq = list.create()
 
         subtotal = 0.00
@@ -661,7 +675,7 @@ module ""
 
             if @@(product,"#cantidad") > 0
             {
-                ref taxes = req.calculateTaxes(product)
+                ref taxes = calculateTaxes(product)
 
                 new item
                 {
@@ -698,7 +712,7 @@ module ""
     }
 
     //#region list()
-    req.list::&db,&params
+    list::&db,&params
     {
         do dbr.apps.action.grant("TD10")
 
@@ -712,41 +726,29 @@ module ""
         
         return data
 
-        exception
-        {
-            do errordet(@false)
-			code = last_error_code()
-			error = last_error()
-            do dbr.apps.action.log()
-            do rise_error(code,error)
-        }
+        exception{ do catch(db,params,@null) }
     }
 
     //#region read()
-    req.read::&db,&params
+    read::&db,&params
     {
         do dbr.apps.action.grant("TD10")
+
+        if not(isset("@just_read_entity")) { @just_read_entity = @false }
+        if @just_read_entity { return entity.read(db,params) }
 
         new data
         {
             @"cmpreq*": entity.read(db,params)
         }
-        
         do prepareView(db,params,data)
         return data
 
-        exception
-        {
-            do errordet(@false)
-			code = last_error_code()
-			error = last_error()
-            do dbr.apps.action.log()
-            do rise_error(code,error)
-        }
+        exception{ do catch(db,params,@null) }
     }
 
     //#region blank()
-    req.blank::&db,&params
+    blank::&db,&params
     {
         do dbr.apps.action.grant("TD10")
 
@@ -757,33 +759,37 @@ module ""
         do prepareView(db,params,data)
         return data
 
-        exception
-        {
-            do errordet(@false)
-			code = last_error_code()
-			error = last_error()
-            do dbr.apps.action.log()
-            do rise_error(code,error)
-        }
+        exception{ do catch(db,params,@null) }
+    }
+
+    //#region foliodocumento()
+    foliodocumento::&db,serie,folio
+    {
+        iblock = dbr.folios.id_block(db,@cRequisicion,serie)
+        
+        if folio > 0 { folio = dbr.folios.set_new(db,iblock,folio,3) }
+        else { folio = dbr.folios.set_new(db,iblock,dbr.folios.get_new(db,iblock),3) }
+        
+        ref info = dbr.folios.info(db,iblock,folio)
+
+        referencia = serie + padleft(str(folio),6,"0")
+        serie, referencia >> info
+
+        return info
     }
 
     //#region create()
-    req.create::&db,&params,&data
+    create::&db,&params,&data
     {
         @use_transaction = @false
-        
-        serie = trim(@@(data,"$serie"))
-        folio = abs(@@(data,"#folio"))
+        @just_read_entity = @true
 
         do dbr.apps.action.pre("TD11")
         do dbr.begin(db)
 
-        iblock = dbr.folios.id_block(db,@cRequisicion,serie)
-        if folio > 0 { folio = dbr.folios.set_new(db,iblock,folio,3) }
-        else { folio = dbr.folios.set_new(db,iblock,dbr.folios.get_new(db,iblock),3) }
-        ref infoFolio = dbr.folios.info(db,iblock,folio)
-
-        referencia = serie + padleft(str(folio),6,"0")
+        serie = trim(@@(data,"$serie"))
+        folio = abs(@@(data,"#folio"))
+        ref fdoc = foliodocumento(db,serie,folio)
 
         new cmpreq
         {
@@ -794,8 +800,8 @@ module ""
             @"partida": @@(data,"#partida")
             @"periodo": @@(data,"#periodo")
             @"tipo": @@(data,"#tipo")
-            @"referencia": referencia
-            @"folio": @@(infoFolio,"#sys_pk")
+            @"referencia": @@(fdoc,"$referencia")
+            @"folio": @@(fdoc,"#sys_pk")
             @"fecha": @@(data,"$fecha")
             @"flimite": @@(data,"$flimite")
             @"almacen": @@(data,"#almacen")
@@ -814,7 +820,7 @@ module ""
         if @@(cmpreq,"#cc") < 1 { do rise_error(515,"No se ha indicado el centro de surtido.") }
         if @@(cmpreq,"#divisa") < 1 { do rise_error(516,"No se ha indicado una divisa.") }
         if @@(cmpreq,"#tcambio") <= 0 { do rise_error(517,"Debe especificar un tipo de cambio válido.") }
-        if @@(cmpreq,"#status") < 0 { cmpreq<"status"> : @stt_borrador }
+        if @@(cmpreq,"#status") < 0 { cmpreq<"status"> : @stt_req_borrador }
         if @@(cmpreq,"$flimite") == "" { do field.remove(cmpreq,"flimite") }
         if @@(cmpreq,"#unidad_org") < 1 { do field.remove(cmpreq,"unidad_org") }
         if @@(cmpreq,"#almacen") < 1 { do field.remove(cmpreq,"almacen") }
@@ -858,10 +864,10 @@ module ""
         if add_products
         {
             ref filters = record.copy(data,"almacen,fil_clase,fil_linea,fil_marca,fil_depto,fil_gv,fil_prod_below,fil_prod_until")
-            do req.setStockKeeping(db,filters,cmpreq)
+            do setStockKeeping(db,filters,cmpreq)
         }
-        
-        ref entity = @@(entity.create(db,params,cmpreq),"&cmpreq")
+
+        ref entity = entity.create(db,params,cmpreq)
 
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
@@ -870,26 +876,11 @@ module ""
         @url_redir = replace(url_redir, "{_entity_id}", @@(entity,"$sys_pk"))
         return entity
 
-        exception
-        {
-            do errordet(@false)
-            if dbr.in_transaction(db) { do dbr.rollback(db) }
-
-            ref FormData = record.copy(data,"*")
-            code = last_error_code()
-            error = last_error()
-
-            do record.clear(data)
-            data<"form*"> : FormData
-
-            do prepareView(db,params,data)
-            do dbr.apps.action.log()
-            do rise_error(code,error)
-        }
+        exception{ do catch(db,params,data) }
     }
 
     //#region genArrayDetails()
-    req.genArrayDetails::&data
+    genArrayDetails::&data
     {
         new cmpreq
         {
@@ -948,7 +939,7 @@ module ""
                 @"joinfield": "ref_req"
                 @"keyfield": "sys_pk"
                 @"table": "dcmpreq"
-                @"select_query": "SELECT NULL"
+                @"select_query": @qry_dcmpreq
                 @"fields": "producto,cantidad,unidad,precio,impuestos,excluido,notas"
             }
         }
@@ -957,15 +948,16 @@ module ""
     }
 
     //#region update()
-    req.update::&db,&params,&data
+    update::&db,&params,&data
     {
         @use_transaction = @false
+        @just_read_entity = @true
 
         do dbr.apps.action.pre("TD12")
         do dbr.begin(db)
 
-        ref cmpreq = req.genArrayDetails(data)
-        ref entity = @@(entity.update(db,params,cmpreq),"&cmpreq")
+        ref cmpreq = genArrayDetails(data)
+        ref entity = entity.update(db,params,cmpreq)
 
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
@@ -974,26 +966,327 @@ module ""
         @url_redir = @CMP_REQUISICION
         return entity
 
-        exception
+        exception{ do catch(db,params,data) }
+    }
+
+    //#region genAdditional()
+    genAdditional::&db,&data,&details
+    {
+        ref dcmpreq = list.create()
+        subtotal = 0
+        impuestos = 0
+
+        for i = 0; i < list.count(details)
         {
-            do errordet(@false)
-            if dbr.in_transaction(db) { do dbr.rollback(db) }
+            ref p = list.obj(details,i)
+            if @@(p,"#comprar") > 0
+            {
+                ref t = calculateTaxes(p)
+                new d
+                {
+                    @"producto": @@(p,"#iproducto")
+                    @"unidad": @@(p,"$unidad")
+                    @"precio": @@(p,"#precio")
+                    @"cantidad": @@(p,"#comprar")
+                    @"impuestos": @@(t,"#impuestos")
+                    @"notas": ""
+                    @"excluido": @false
+                }
+                do list.add(dcmpreq,d)
+
+                subtotal = subtotal + @@(t,"#subtotal")
+                impuestos = impuestos + @@(t,"#impuestos")
+            }
+        }
+
+        if list.count(dcmpreq) > 0
+        {
+            ref params = record.copy(@@(@http_context,"&request/get"),"*")
+            ref cmpreq = record.copyex(data,@null,"serie,unidad,almacen,cc,divisa,tcambio", ",", "unidad:unidad_org", ":")
+            ref fdoc = foliodocumento(db,@@(cmpreq,"$serie"),0)
+            userid = @@(@http_context,"$session/user/uid")
+            userpk = lib.GetPkUsr(db,userid)
+            params<"_entity_id"> : "_new"
+
+            using cmpreq
+            {
+                @"sys_user": userid
+
+                @"tipo": @type_req_sup
+                @"referenncia": @@(fdoc,"$referencia")
+                @"folio": @@(fdoc,"#sys_pk")
+                @"fecha": date_str(now(),"yyyy-MM-dd")
+                @"status": @stt_req_aprobado
+                @"subtotal": subtotal
+                @"impuestos": impuestos
+                @"notas": "Requisición suplementaria proviniente de "+@@(data,"$referencia")
+                @"ucreo": userpk
+                @"uaprobo": userpk
+                @"origen": @@(data,"#sys_pk")
+
+                @"dcmpreq*":dcmpreq
+            }
+
+            using @childs
+            {
+                member "dcmpreq"
+                {
+                    @"joinfield": "ref_req"
+                    @"keyfield": "sys_pk"
+                    @"table": "dcmpreq"
+                    @"select_query": @qry_dcmpreq
+                    @"fields": "producto,unidad,precio,cantidad,impuestos,notas,excluido"
+                }
+            }
+
+            do entity.create(db,params,cmpreq)
+        }
+    }
+
+    //#region genProduction()
+    genProduction::&db,&data,&details
+    {
+        ref record = record.create()
+        for i = 0; i < list.count(details)
+        {
+            ref p = list.obj(details,i)
+            if @@(p,"#producir") > 0
+            {
+                cproduccion = @@(p,"$iproduccion")
+                if not(field.exist(record,cproduccion)) { record<cproduccion+"*"> : list.create() }
+
+                new d
+                {
+                    @"iproducto": @@(p,"#iproducto")
+                    @"precio": 0
+                    @"cantidad": @@(p,"#producir")
+                    @"d1": 0
+                    @"d2": 0
+                    @"cdirecto": @@(p,"#cdirecto")
+                    @"cindirecto": 0
+                    @"cmanoobra": 0
+                    @"cmaquinaria": 0
+                    @"idivisa": @@(p,"#idivisa")
+                    @"tipocambio": @@(p,"#tcambio")
+                    @"tiemposervicio": 0
+                    @"tiempoproduccion": 0
+                    @"especificaciones": ""
+                }
+
+                do list.add(@@(record,"&"+cproduccion), d)
+            }
+        }
+
+        ref keys = list.create_from_fields(record)
+        for i = 0; i < list.count(keys)
+        {
+            icproduccion = list.num(keys,i)
+            ref dorden = @@(record,"&"+icproduccion)
+            new orden
+            {
+                @"referencia": @@(data,"$referencia")
+                @"hora": date_str(now(),"yyyy-MM-dd HH:mm")
+                @"icproduccion": icproduccion
+                @"icconsumo": @@(data,"#cc")
+                @"idivisa": @@(data,"#divisa")
+                @"tipocambio": @@(data,"#tcambio")
+                @"notas": "Orden generada por requisición "+@@(data,"$referencia")
+
+                @"_detalle": to.json(dorden)
+            }
+
+            do dprod.orden.setGlobalConfigs()
+            do dprod.orden.create(db,record.create(),orden)
+        }
+        do setGlobalConfigs()
+    }
+
+    //#region supply()
+    supply::&db,&params,&data
+    {
+        @use_transaction = @false
+        @just_read_entity = @true
+
+        do dbr.apps.action.pre("TD1B")
+        do dbr.begin(db)
+
+        ref cmpreq = entity.read(db,params)
+        ref details = @@(data,"&detalle")
+
+        do genAdditional(db,cmpreq,details)
+        do genProduction(db,cmpreq,details)
+
+        do dbr.apps.action.pos(@null)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(@null)
+
+        lastuser = @@(@http_context,"$session/user/uid")
+        do dbr.execute(db,ftext("
+            UPDATE #<@table_name> SET
+                sys_timestamp = NOW(),
+                sys_lastuser = '#<lastuser>',
+                sys_recver = sys_recver + 1,
+                status = #<@stt_req_completado>
+        "),params)
+
+        new response
+        {
+            @"message": "Proceso completado"
+            @"url_redir": @CMP_REQUISICION
+        }
+        return response
+
+        exception{ do catch(db,params,data) }
+    }
+
+    //#region stock()
+    stock::&db,&params,&data
+    {
+        @use_transaction = @false
+        @just_read_entity = @true
+
+        do dbr.apps.action.pre("TD1C")
+        do dbr.begin(db)
+
+        ref req = dbr.rec(db,"
+            SELECT
+                r.referencia,
+                c.sys_pk AS almacen_origen,
+                r.almacen AS almacen_destino
+            FROM cmpreq r
+                INNER JOIN cconsumo c ON r.cc = c.sys_pk
+            WHERE r.sys_pk = @_entity_id
+        ",params)
+        ref det = @@(data,"&detalle")
+
+        ref productos = list.create()
+        for i = 0; i < list.count(det)
+        {
+            ref o = list.obj(det,i)
+            entregar = @@(o,"#entregar")
+            
+            if entregar > 0
+            {
+                o<"entregar"> : entregar
+                new p
+                {
+                    @"sys_pk": @@(o,"#iproducto")
+                    @"costoultimo": @@(o,"#costoultimo")
+                    @"cantidad": entregar
+                }
+                do list.add(productos,p)
+                
+                // Actualizar cantidad surtida por cada producto en el detalle de la requisición
+                sql_up_surtido = "
+                update dcmpreq set
+                    surtido = (ifnull(surtido,0) + @entregar)
+                where
+                    sys_pk = @idetalle
+                    and (ifnull(surtido,0) + @entregar) <= @faltante
+                "
+                if not(dbr.execute(db,sql_up_surtido,o)) {
+                    do rise_error(511,"Detalle de requisición no encontrado o la cantidad a entregar es mayor al faltante.")
+                }
+            }
+        }
+        if list.count(productos) < 1 { do rise_error(511,"¡No es posible continuar! Nada por procesar.") }
+
+        transfer_mode = parse.num(dbr.vars.getd(db,"cmpreq_transfer_mode","1"))
+        params<"catinv"> : dbr.vars.getd(db,"cmpreq_catinv_para_surtir","SR")
+        referencia = @@(req,"$referencia")
+
+        last_cardex = dbr.str(db,"select referencia from cardex where referencia like concat(@referencia,'/%') order by sys_dtcreated desc limit 1",req)
+        if last_cardex == "" { referencia = referencia + "/1" }
+        else
+        {
+            ref parts = split(last_cardex,"/")
+            consecutive = list.num(parts,1)
+            referencia = referencia +"/"+ str(consecutive + 1)
+        }
+
+        // Preparar la carga útil y encabezados para la petición de transferencia
+        new header
+        {
+            @"Content-Type": "application/json; charset=utf-8"
+            @"Authorization": "Bearer "+@@(@http_context,"$session/user/ids")
+        }
+        new payload
+        {
+            @"tipo_movimiento": "traspaso"
+            @"fecha": date_str(now(),"yyyy-MM-dd")
+            @"referencia": referencia
+            @"icategoria": dbr.num(db,"select sys_pk from categoria where codigo = @catinv",params)
+            @"mov_2p": (transfer_mode == 2)
+            @"step": 1 //Número de paso que representa la operación cuando el modo de transferencia es en 2 pasos
+            @"ialmacen": @@(req,"#almacen_origen")
+            @"ialmacen2": @@(req,"#almacen_destino")
+            @"descripcion": "Movimiento generado por requisición "+@@(req,"$referencia")
+
+            @"_productos*": productos
+        }
+
+        endpoint = path.concat(lib.base_url(@false),@URL_NEW_MOVINV)
+        response = http.request(endpoint,"POST",header,to.json(payload))
+        ref resp = from.json(response)
+        
+        if field.exist(resp,"message") { do rise_error(500,@@(resp,"$message")) }
+        // Vincular dcardex por cada producto en el detalle de la requisición
+        for i = 0; i < list.count(det)
+        {
+            ref o = list.obj(det,i)
+            o<"referencia"> : referencia
+            o<"movimiento"> : dbr.num(db,"select d.sys_pk from dcardex d inner join cardex c on d.fk_cardex_movimientos=c.sys_pk where c.referencia=@referencia and d.iproducto=@iproducto and ifnull(d.salidas,0) > 0;",o)
+            do dbr.execute(db,"insert into dcmpreq_surtido (detalle,movimiento) value (@idetalle,@movimiento)",o)
+        }
+
+        do dbr.apps.action.pos(resp)
+        do dbr.commit(db)
+        do dbr.apps.action.ext(resp)
+
+        new r
+        {
+            @"message": "Proceso completado"
+            @"url_redir": @CMP_REQUISICION
+        }
+        return r
+
+        exception{ do catch(db,params,data) }
+    }
+
+    delete::&db,&params
+    {
+        do rise_error(500,"Acción no implementada")
+    }
+
+    //#region catch()
+    catch::&db,&params,&data
+    {
+        do errordet(@false)
+        code = last_error_code()
+        error = last_error()
+
+        if dbr.in_transaction(db) { do dbr.rollback(db) }
+        if isset("@@_action_context") { do dbr.apps.action.log() }
+
+        if isanyword(@@(params,"$_operation"),"create,update")
+        {
+            if isnull(data) { ref data:record.create() }
+            if contains(error,"Duplicate entry") { error = "Entrada duplicada, ya existe un registro con los mismos valores." }
 
             ref FormData = record.copy(data,"*")
-            code = last_error_code()
-            error = last_error()
-
             do record.clear(data)
             data<"form*"> : FormData
 
             do prepareView(db,params,data)
-            do dbr.apps.action.log()
-            do rise_error(code,error)
         }
-    }
+        else if @@(params,"$_operation") == "delete"
+        {
+            if contains(error,"Cannot delete or update a parent row") || contains(error,"DELETE Error") {
+                error = "No es posible eliminar, otros registros dependen del elemento proporcionado."
+            }
+        }
 
-    req.delete::&db,&params
-    {
-        do rise_error(500,"Acción no implementada")
+        do clear_exceptions()
+        do rise_error(code,error)
     }
 }

@@ -48,7 +48,7 @@ program "Controlador de eventos"
 
             new gop_mov_data
             {
-                @"sys_pk": @@(req,"#ipartida") //(int) Clave primaria de la partida.
+                @"sys_pk": @@(req,"#partida") //(int) Clave primaria de la partida.
                 @"referencia": @@(data,"$referencia") //(string) Referencia del elemento que realiza la afectación.
                 @"periodo": @@(req,"#periodo") //(int) Mes (MM) sobre el que se hara la afectación.
                 @"comprometido": 0 //(decimal) Monto (+\-) de la afectación.
