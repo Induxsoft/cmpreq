@@ -4,6 +4,7 @@ if not(isset("entity")) && isset("cmpreq") { ref entity = cmpreq }
 if not(isset("entity")) && isset("cmpcon") { ref entity = cmpcon }
 if not(isset("entity")) { ref entity = record.create() }
 
+if not(isset("@enable_editing")) { @enable_editing = @false }
 _consolidacion = @@(entity,"#consolidacion")
 _status = @@(entity,"#status")
 _ejercicio = @@(entity,"#ejercicio")
@@ -23,7 +24,7 @@ section(id="cmpreq-info")
         div(class="col-12 col-md-4 d-md-flex align-items-center justify-content-md-start gap-1")
         {
             h6(class="my-0"){"Tipo:"}
-            p(class="my-0"){"#<@@(cmpreq,'$ctipo')>"}
+            p(class="my-0"){"#<@@(entity,'$ctipo')>"}
         }
         #!
         if not(_consolidacion)
@@ -32,7 +33,7 @@ section(id="cmpreq-info")
             div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-end gap-1")
             {
                 h6(class="my-0"){"Unidad Organizacional:"}
-                p(class="my-0"){"#<@@(cmpreq,'$unidad_org')>"}
+                p(class="my-0"){"#<@@(entity,'$unidad_org')>"}
             }
         }
         #$
@@ -48,40 +49,77 @@ section(id="cmpreq-info")
             }
             #$
         }
-        div(class="col-auto")
-        {
-            span{ b{"Elaboración: "} "#<@@(entity,'$fecha')>" }
-        }
-        div(class="col-auto")
-        {
-            span{ b{"Vencimiento: "} "#<@@(entity,'$flimite')>" }
-        }
-        div(class="col-auto")
-        {
-            span{ b{"Divisa: "} "#<@@(entity,'$ddivisa')>" }
-        }
-        div(class="col-auto")
-        {
-            span{ b{"T. Cambio: "} "#<@@(entity,'#tcambio')>" }
-        }
         #!
-        if not(_consolidacion)
+        if not(@enable_editing)
         {
             #$
             div(class="col-auto")
             {
-                span{ b{"Almacén: "} "#<@@(entity,'$dalmacen')>" }
+                span{ b{"Elaboración: "} "#<@@(entity,'$fecha')>" }
+            }
+            div(class="col-auto")
+            {
+                span{ b{"Vencimiento: "} "#<@@(entity,'$flimite')>" }
+            }
+            div(class="col-auto")
+            {
+                span(id="txt_divisa" "data-codigo"="#<@@(entity,'$cdivisa')>")
+                { b{"Divisa: "} "#<@@(entity,'$ddivisa')>" }
+            }
+            div(class="col-auto")
+            {
+                span{ b{"T. Cambio: "} "#<@@(entity,'#tcambio')>" }
+            }
+            #!
+            if not(_consolidacion)
+            {
+                #$
+                div(class="col-auto")
+                {
+                    span{ b{"Almacén: "} "#<@@(entity,'$dalmacen')>" }
+                }
+            }
+            #$
+            div(class="col-auto")
+            {
+                span{ b{"C. Surtido: "} "#<@@(entity,'$dconsumo')>" }
+            }
+            div(class="col-12")
+            {
+                b{"Notas:"}
+                div(style="white-space:pre-wrap;"){"#<_notas>"}
+            }
+        }
+        #!
+        else
+        {
+            #$
+            div(class="col-6 col-sm-3 col-md-2")
+            {
+                label(class="form-label fw-bold" "for"="txt_fecha"){"Elaboración:"}
+                input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',entity)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
+            }
+            div(class="col-6 col-sm-3 col-md-2")
+            {
+                label(class="form-label" "for"="txt_flimite"){"Vencimiento:"}
+                input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',entity)>" id="txt_flimite" title="Fecha y hora límite para completarla")
+            }
+            div(class="col-8 col-sm-6 col-md-4")
+            {
+                label(class="form-label fw-bold" "for"="txt_divisa"){"Divisa:"}
+                input(class="form-control form-control-sm rounded-0" type="text" value="#<@@(entity,'$ddivisa')>" id="txt_divisa" "data-codigo"="#<@@(entity,'$cdivisa')>" disabled="")
+            }
+            div(class="col-4 col-sm-3 col-md-2")
+            {
+                label(class="form-label" "for"="txt_tcambio"){"T.Cambio:"}
+                input(class="form-control form-control-sm rounded-0" type="number" name="tcambio" value="#<lib.form('tcambio','nm',entity)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="")
+            }
+            div(class="col-12")
+            {
+                label(class="form-label" "for"="txt_notas"){"Notas:"}
+                textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',entity)>"}
             }
         }
         #$
-        div(class="col-auto")
-        {
-            span{ b{"C. Surtido: "} "#<@@(entity,'$dconsumo')>" }
-        }
-        div(class="col-12")
-        {
-            b{"Notas:"}
-            div(style="white-space:pre-wrap;"){"#<_notas>"}
-        }
     }
 }

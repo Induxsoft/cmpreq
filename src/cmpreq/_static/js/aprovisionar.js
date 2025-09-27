@@ -58,7 +58,7 @@ var req =
                         )
                     });
                     if (incomplete_row) {
-                        alert("¡No es posible continuar! Hay filas incompletas.\r\n - La cantidad por comprar y producir debe ser igual al faltante.\r\n - Debe seleccionar el C. Producción de los productor a producir.");
+                        alert("¡No es posible continuar! Hay filas incompletas.\r\n - La cantidad por comprar mas producir debe ser igual al faltante.\r\n - Debe seleccionar el C. Producción de los productor a producir.");
                         resolve(false);
                         return;
                     }
@@ -74,7 +74,7 @@ var req =
                         )
                     });
                     if (incomplete_row) {
-                        alert("¡No es posible continuar! Hay filas incompletas.\r\n - La cantidad por comprar y producir debe ser igual al faltante o hasta el mínimo del producto en el almacen del centro de consumo.\r\n - Debe seleccionar el C. Producción de los productor a producir.");
+                        alert("¡No es posible continuar! Hay filas incompletas.\r\n - La cantidad por comprar mas producir debe ser igual al faltante o hasta el mínimo del producto en el almacén del centro de consumo.\r\n - Debe seleccionar el C. Producción de los productor a producir.");
                         resolve(false);
                         return;
                     }

@@ -70,7 +70,7 @@ module "form.dk"
         if @@(itm,"#id") == @@(entity,'#periodo') { periodo = @@(itm,"$const") }
     }
 
-    header_act::
+    printNavButtons::
     {
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
         url_cc = replace(@CMP_CC,"{ireq}",@_entity_id)
@@ -82,13 +82,20 @@ module "form.dk"
         if @show_btn_aprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_aprobado>" title="Cambiar estado"){$"#<@ICON_CHECK> Aprobar"} #!}
         if @show_btn_cancelar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_cancelado>" title="Cambiar estado"){$"#<@ICON_FILE_CANCEL> Cancelar"} #!}
     }
-    point general_act to header_act
+    point buttons to printNavButtons
     new nav_config
     {
-        @"title": @@(entity,"$referencia")
-        @"buttons*": general_act
+        @"title": @@(entity,"$referencia") + " ["+@@(entity,"$cstatus")+"]"
+        @"buttons*": buttons
         @"urlexit": @CMP_REQUISICION
-        member @"hidden" { @"print": @true }
+
+        member @"hidden"
+        {
+            @"copy": @true
+            @"csv": @true
+            @"print": @true
+            @"send": @false
+        }
     }
 
     #$
@@ -106,66 +113,14 @@ module "form.dk"
                 input(type="hidden" name="sys_pk" value="#<@@(entity,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(entity, '#sys_recver')>")
 
-                div(class="row #<ifstr(not(@consolidacion),'','d-none')>")
-                {
-                    div(class="col-12 col-md-4 d-md-flex align-items-center justify-content-md-start gap-1")
-                    {
-                        h6(class="my-0"){"Tipo:"}
-                        p(class="my-0"){"#<@@(entity,'$ctipo')>"}
-                    }
-                    div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-end gap-1")
-                    {
-                        h6(class="my-0"){"Unidad Organizacional:"}
-                        p(class="my-0"){"#<@@(entity,'$unidad_org')>"}
-                    }
-                    div(class="col-3 col-md-2 d-md-flex align-items-center justify-content-md-start gap-1")
-                    {
-                        h6(class="my-0"){"Ejercicio:"}
-                        p(class="my-0"){"#<@@(entity,'$ejercicio')>"}
-                    }
-                    div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-center gap-1")
-                    {
-                        h6(class="my-0"){"Partida Presupuestal:"}
-                        p(class="my-0"){"#<@@(entity,'$partida_pre')>"}
-                    }
-                    div(class="col-3 col-md-2 d-md-flex align-items-center justify-content-md-end gap-1")
-                    {
-                        h6(class="my-0"){"Periodo:"}
-                        p(class="my-0"){"#<periodo>"}
-                    }
-                }
-
-                div(class="d-flex justify-content-between flex-wrap gap-2")
-                {
-                    div(class="d-flex align-items-center gap-1")
-                    {
-                        h6(class="my-0"){$"Elaboración:"}
-                        p(class="my-0"){$"#<@@(entity,'$fecha')>"}
-                    }
-                    div(class="d-flex align-items-center gap-1")
-                    {
-                        h6(class="my-0"){$"Vencimiento:"}
-                        p(class="my-0"){$"#<@@(entity,'$flimite')>"}
-                    }
-                    div(class="d-flex align-items-center gap-1")
-                    {
-                        h6(class="my-0"){$"Divisa:"}
-                        p(class="my-0" "data-codigo"="#<@@(entity,'$cdivisa')>" id="txt_divisa"){$"#<@@(entity,'$ddivisa')>"}
-                    }
-                    div(class="d-flex align-items-center gap-1")
-                    {
-                        h6(class="my-0"){$"T.Cambio:"}
-                        p(class="my-0"){$"#<@@(entity,'$tcambio')>"}
-                    }
-                }
-
-                h6(class=""){$"Notas:"}
-                textarea(class="form-control rounded-0" name="" id="txt_notas" maxlength="32000" readonly=""){$"#<@@(entity,'$notas')>"}
+                ##
+                #include "../requisiciones/main.readonly.info.dk"
+                ##
             }
 
             nav(class="mt-2")
             {
-                div(class="nav nav-tabs mb-2" id="nav-tab" role="tablist")
+                div(class="nav nav-tabs" id="nav-tab" role="tablist")
                 {
                     button(class="nav-link py-1 #<ifstr(@consolidacion,'active','d-none')>" type="button" role="tab" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
                     button(class="nav-link py-1 #<ifstr(not(@consolidacion),'active','')>" type="button" role="tab" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
@@ -243,7 +198,7 @@ module "form.dk"
 
                 div(class="tab-pane fade" id="nav-solicitudes" role="tabpanel" "aria-labelledby"="nav-solicitudes-tab")
                 {
-                    div(class="d-flex justify-content-end align-items-center gap-1 px-2 my-1" id="tbl_action_bar")
+                    div(class="d-flex justify-content-end align-items-center gap-1 px-2" id="tbl_action_bar")
                     {
                         small(class="flex-grow-1 text-muted"){$""}
 

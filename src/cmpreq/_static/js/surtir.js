@@ -40,7 +40,7 @@ var req =
             resolve(true);
         });
     },
-    
+
     async process()
     {
         if (this.req_process) return;
@@ -50,7 +50,7 @@ var req =
         const data = this.filterData();
         if (!( await this.validateRowsData(data) )) {
             tools.V12FormBarDisableControls(false);
-            this.req_generate = false;
+            this.req_process = false;
             return;
         }
 

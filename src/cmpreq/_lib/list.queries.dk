@@ -127,21 +127,23 @@ module ""
 
     @qry_aprovisionar_dcmpreq = "
     SELECT
+        -- Campos visibles en el editable
         p.sys_pk AS iproducto,
         p.codigo,
         p.descripcion,
-        d.unidad,
-        d.precio,
-        d.cantidad,
-        IFNULL(e.existencia,0) AS disponible,
-        IF(d.cantidad < IFNULL(e.existencia,0), 0, d.cantidad - IFNULL(e.existencia,0)) AS faltante,
+        dt.unidad,
+        dt.precio,
+        IF(@surtir_al_consolidar, SUM(dt.cantidad) - SUM(IFNULL(dt.surtido,0)), SUM(dt.cantidad)) AS requerido,
+        SUM(IFNULL(e.existencia,0)) AS disponible,
+        GREATEST(IF(@surtir_al_consolidar, SUM(dt.cantidad) - SUM(IFNULL(dt.surtido,0)), SUM(dt.cantidad)) - SUM(IFNULL(e.existencia,0)), 0) AS faltante,
         0 AS comprar,
         0 AS producir,
+        -- Datos extras para operaciones
+        IF(p.costopromedio, p.costopromedio, IFNULL(p.costoultimo,0)) AS cdirecto,
         p.iclase,
         p.idivisa,
-        m.tcambio,
+        d.tcambio,
         IFNULL(mm.uf_minimo,0) uf_minimo,
-        IF(p.costopromedio, p.costopromedio, IFNULL(p.costoultimo,0)) AS cdirecto,
         IFNULL(i.uf_tipoi1,'') AS i1_txt,
         (CONVERT(REPLACE(SUBSTRING_INDEX(i.i1compra, '|', @zimpuesto),'%',''), DECIMAL(18,6)) / 100) AS i1_tasa,
         IFNULL(i.uf_tipoi2,'') AS i2_txt,
@@ -150,15 +152,25 @@ module ""
         (CONVERT(REPLACE(SUBSTRING_INDEX(i.i3compra, '|', @zimpuesto),'%',''), DECIMAL(18,6)) / 100) AS i3_tasa,
         IFNULL(i.uf_tipoi4,'') AS i4_txt,
         (CONVERT(REPLACE(SUBSTRING_INDEX(i.i4compra, '|', @zimpuesto),'%',''), DECIMAL(18,6)) / 100) AS i4_tasa
-    FROM cmpreq r
-        INNER JOIN dcmpreq d ON d.ref_req = r.sys_pk
-        INNER JOIN producto p ON d.producto = p.sys_pk
-        INNER JOIN divisa m ON p.idivisa = m.sys_pk
+    FROM cmpreq AS cn
+        RIGHT JOIN cmpreq rq ON rq.en = cn.sys_pk
+        INNER JOIN dcmpreq dt ON dt.ref_req = rq.sys_pk
+        INNER JOIN producto p ON dt.producto = p.sys_pk
+        INNER JOIN divisa d ON p.idivisa = d.sys_pk
         INNER JOIN cfgimpuesto AS i ON p.impuestos = i.sys_pk
-        INNER JOIN cconsumo c ON r.cc = c.sys_pk
-        LEFT JOIN existencias e ON c.ialmacen = e.ialmacen AND d.producto = e.fk_producto_iexistencias
-        LEFT JOIN ut_maxmin mm ON c.ialmacen = mm.ialmacen AND d.producto = mm.iproducto
-    WHERE r.sys_pk = @_entity_id
+        INNER JOIN cconsumo c ON rq.cc = c.sys_pk
+        LEFT JOIN existencias e ON c.ialmacen = e.ialmacen AND dt.producto = e.fk_producto_iexistencias
+        LEFT JOIN ut_maxmin mm ON c.ialmacen = mm.ialmacen AND dt.producto = mm.iproducto
+    WHERE (cn.sys_pk = @_entity_id OR rq.sys_pk = @_entity_id)
+    GROUP BY
+        dt.producto, dt.unidad, dt.precio,
+        -- Otros campos porque MySQL 8.x se fresea :/
+        p.sys_pk, p.codigo, p.descripcion, p.costopromedio, p.costoultimo,
+        p.iclase, p.idivisa, d.tcambio, mm.uf_minimo,
+        i.uf_tipoi1, i.uf_tipoi2, i.uf_tipoi3, i.uf_tipoi4,
+        i.i1compra, i.i2compra, i.i3compra, i.i4compra
+    ORDER BY
+        p.codigo
     "
 
     @qry_surtir_dcmpreq = "
@@ -242,6 +254,7 @@ module ""
         con.referencia,
         DATE_FORMAT(con.fecha,'%Y-%m-%d') AS fecha,
         IFNULL(DATE_FORMAT(con.flimite,'%Y-%m-%d'),'') AS flimite,
+        IFNULL(con.cc,0) cc,
         con.subtotal,
         con.impuestos,
         (con.subtotal + con.impuestos) AS importe,
@@ -249,12 +262,16 @@ module ""
         con.`status`,
         IFNULL(con.notas,'') AS notas,
         IFNULL(con.consolidacion,0) AS consolidacion,
-        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa,
+        typ.const AS ctipo,
         stt.const AS cstatus,
-        dvs.codigo AS cdivisa
+        dvs.codigo AS cdivisa,
+        IFNULL(CONCAT('[',ccm.codigo,'] ',ccm.descripcion),'') AS dconsumo,
+        CONCAT(dvs.codigo,' [',dvs.descripcion,']') AS ddivisa
     FROM cmpreq AS con
+        INNER JOIN cmpreq_type typ ON con.tipo = typ.id
         INNER JOIN cmpreq_status AS stt ON stt.id = con.`status`
         INNER JOIN divisa AS dvs ON dvs.sys_pk = con.`divisa`
+        LEFT JOIN cconsumo ccm ON con.cc = ccm.sys_pk
     WHERE (con.#<@keyfield> = @_entity_id)
         #<conditions>
     "

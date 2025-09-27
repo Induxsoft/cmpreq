@@ -17,6 +17,10 @@
             {
                 "route": "/unialm/",
                 "entity_type": "unialm"
+            },
+            {
+                "route": "/cs/",
+                "entity_type": "cs"
             }
         ]
     }

@@ -281,13 +281,12 @@ module "Requisiciones :req"
         else if view == "aprovisionar"
         {
             params<"sobre_aprovisionar"> : parse.num(dbr.vars.get(db,"cmpreq_sobre_aprovisionamiento"))
+            params<"surtir_al_consolidar"> : parse.num(dbr.vars.get(db,"cmpreq_surtir_al_consolidar"))
 
             data<"dcmpreq*"> : dbr.list(db,@qry_aprovisionar_dcmpreq,params)
         }
         else if view == "surtir"
         {
-            params<"surtir_al_consolidar"> : parse.num(dbr.vars.get(db,"cmpreq_surtir_al_consolidar"))
-
             data<"dcmpreq*"> : dbr.list(db,@qry_surtir_dcmpreq,params)
         }
         else
@@ -502,6 +501,7 @@ module "Requisiciones :req"
     changeStatus::&db,&params,&data
     {
         @use_transaction = @false
+        @just_read_entity = @true
 
         action_code = ""
         new_status = @@(data,"#status")
@@ -541,15 +541,31 @@ module "Requisiciones :req"
             }
             else
             {
+                using cmpreq
+                {
+                    @"fecha": @@(data,"$fecha")
+                    @"flimite": @@(data,"$flimite")
+                    @"subtotal": 0
+                    @"impuestos": 0
+                    @"tcambio": @@(data,"#tcambio")
+                    @"notas": trim(@@(data,"$notas"))
+                }
+
+                if @@(cmpreq,"$flimite") == "" { do field.remove(cmpreq,"flimite") }
+
                 new args
                 {
                     @"conId": trim(@@(params,"$_entity_id"))
                     @"reqsId": trim(@@(data,"$_requisiciones"))
-                }
-                
+                }                
                 do dbr.execute(db,"UPDATE cmpreq SET en = NULL WHERE en = @conId",args)
-                // Agregar requisiciones directas a requisición consolidada
-                if @@(args,"$reqsId") != "" { do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN("+@@(args,"$reqsId")+")",args) }
+                if @@(args,"$reqsId") != ""
+                {
+                    // Agregar requisiciones directas a requisición consolidada
+                    do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN("+@@(args,"$reqsId")+")",args)
+                    // Asegurar un mismo centro de surtido para las requisiciones del consolidado
+                    do dbr.execute(db,"UPDATE cmpreq cn INNER JOIN cmpreq rq ON rq.en = cn.sys_pk SET rq.cc = cn.cc WHERE cn.sys_pk = @conId",args)
+                }
 
                 ref tt = dbr.rec(db,"SELECT ROUND(SUM(subtotal),4) subtotal, ROUND(SUM(impuestos),4) impuestos FROM cmpreq WHERE en = @conId",args)
                 cmpreq<"subtotal"> : @@(tt,"#subtotal")
@@ -884,10 +900,9 @@ module "Requisiciones :req"
     {
         new cmpreq
         {
-            @"sys_lastuser": @@(@http_context, "$session/user/uid")
+            @"sys_lastuser": @@(@http_context,"$session/user/uid")
             @"sys_recver": @@(data,"#sys_recver")
 
-            @"periodo": @@(data,"#periodo")
             @"fecha": @@(data,"$fecha")
             @"flimite": @@(data,"$flimite")
             @"subtotal": 0
@@ -969,8 +984,8 @@ module "Requisiciones :req"
         exception{ do catch(db,params,data) }
     }
 
-    //#region genAdditional()
-    genAdditional::&db,&data,&details
+    //#region supply.additional()
+    supply.additional::&db,&data,&details
     {
         ref dcmpreq = list.create()
         subtotal = 0
@@ -1002,10 +1017,13 @@ module "Requisiciones :req"
         if list.count(dcmpreq) > 0
         {
             ref params = record.copy(@@(@http_context,"&request/get"),"*")
-            ref cmpreq = record.copyex(data,@null,"serie,unidad,almacen,cc,divisa,tcambio", ",", "unidad:unidad_org", ":")
-            ref fdoc = foliodocumento(db,@@(cmpreq,"$serie"),0)
+            ref cmpreq = record.copyex(data,@null,"unidad,almacen,cc,divisa,tcambio", ",", "unidad:unidad_org", ":")
+            ref fdoc = foliodocumento(db,@@(data,"$serie"),0)
             userid = @@(@http_context,"$session/user/uid")
             userpk = lib.GetPkUsr(db,userid)
+
+            if @@(cmpreq,"#unidad_org") < 1 { do field.remove(cmpreq,"unidad_org") }
+            if @@(cmpreq,"#almacen") < 1 { do field.remove(cmpreq,"almacen") }
             params<"_entity_id"> : "_new"
 
             using cmpreq
@@ -1013,13 +1031,13 @@ module "Requisiciones :req"
                 @"sys_user": userid
 
                 @"tipo": @type_req_sup
-                @"referenncia": @@(fdoc,"$referencia")
+                @"referencia": @@(fdoc,"$referencia")
                 @"folio": @@(fdoc,"#sys_pk")
                 @"fecha": date_str(now(),"yyyy-MM-dd")
                 @"status": @stt_req_aprobado
                 @"subtotal": subtotal
                 @"impuestos": impuestos
-                @"notas": "Requisición suplementaria proviniente de "+@@(data,"$referencia")
+                @"notas": "Requisición suplementaria proveniente de "+@@(data,"$referencia")
                 @"ucreo": userpk
                 @"uaprobo": userpk
                 @"origen": @@(data,"#sys_pk")
@@ -1042,9 +1060,8 @@ module "Requisiciones :req"
             do entity.create(db,params,cmpreq)
         }
     }
-
-    //#region genProduction()
-    genProduction::&db,&data,&details
+    //#region supply.production()
+    supply.production::&db,&data,&details
     {
         ref record = record.create()
         for i = 0; i < list.count(details)
@@ -1072,16 +1089,16 @@ module "Requisiciones :req"
                     @"tiempoproduccion": 0
                     @"especificaciones": ""
                 }
-
                 do list.add(@@(record,"&"+cproduccion), d)
             }
         }
 
         ref keys = list.create_from_fields(record)
+        do dprod.orden.setGlobalConfigs()
         for i = 0; i < list.count(keys)
         {
             icproduccion = list.num(keys,i)
-            ref dorden = @@(record,"&"+icproduccion)
+            ref dorden = @@(record,"&"+str(icproduccion))
             new orden
             {
                 @"referencia": @@(data,"$referencia")
@@ -1094,13 +1111,10 @@ module "Requisiciones :req"
 
                 @"_detalle": to.json(dorden)
             }
-
-            do dprod.orden.setGlobalConfigs()
             do dprod.orden.create(db,record.create(),orden)
         }
         do setGlobalConfigs()
     }
-
     //#region supply()
     supply::&db,&params,&data
     {
@@ -1113,8 +1127,8 @@ module "Requisiciones :req"
         ref cmpreq = entity.read(db,params)
         ref details = @@(data,"&detalle")
 
-        do genAdditional(db,cmpreq,details)
-        do genProduction(db,cmpreq,details)
+        do supply.additional(db,cmpreq,details)
+        do supply.production(db,cmpreq,details)
 
         do dbr.apps.action.pos(@null)
         do dbr.commit(db)
@@ -1127,6 +1141,7 @@ module "Requisiciones :req"
                 sys_lastuser = '#<lastuser>',
                 sys_recver = sys_recver + 1,
                 status = #<@stt_req_completado>
+            WHERE #<@keyfield> = @_entity_id
         "),params)
 
         new response
@@ -1139,57 +1154,59 @@ module "Requisiciones :req"
         exception{ do catch(db,params,data) }
     }
 
-    //#region stock()
-    stock::&db,&params,&data
+    //#region stock.products
+    stock.products::&db,&details
     {
-        @use_transaction = @false
-        @just_read_entity = @true
+        ref productos = list.create()
+        for i = 0; i < list.count(details)
+        {
+            ref d = list.obj(details,i)
+            producto = @@(d,"$codigo")+" - "+@@(d,"$descripcion")
+            entregar = @@(d,"#entregar")
 
-        do dbr.apps.action.pre("TD1C")
-        do dbr.begin(db)
+            if entregar > 0
+            {
+                if entregar > @@(d,"#faltante") { do rise_error(511, producto+": la cantidad a entregar es mayor al faltante.") }
+                d<"entregar"> : entregar
+
+                new p
+                {
+                    @"sys_pk": @@(d,"#iproducto")
+                    @"costoultimo": @@(d,"#costoultimo")
+                    @"cantidad": entregar
+                }
+                do list.add(productos,p)
+
+                // Actualizar cantidad surtida por cada producto en el detalle de la requisición
+                sql_up_surtido = "
+                UPDATE dcmpreq SET surtido = (IFNULL(surtido,0) + @entregar)
+                WHERE
+                    sys_pk = @idetalle
+                    AND (IFNULL(surtido,0) + @entregar) <= cantidad
+                "
+                if not(dbr.execute(db,sql_up_surtido,d)) {
+                    do rise_error(511, producto+" no encontrado como detalle de requisición o la cantidad a (surtido + entregar) es mayor a lo requerido.")
+                }
+            }
+        }
+        if list.count(productos) < 1 { do rise_error(511,"¡No es posible continuar! Nada por procesar.") }
+
+        return productos
+    }
+    //#region stock.payload
+    stock.payload::&db,&params,&data
+    {
+        ref productos = stock.products(db,@@(data,"&detalle"))
 
         ref req = dbr.rec(db,"
             SELECT
                 r.referencia,
-                c.sys_pk AS almacen_origen,
+                c.ialmacen AS almacen_origen,
                 r.almacen AS almacen_destino
             FROM cmpreq r
                 INNER JOIN cconsumo c ON r.cc = c.sys_pk
             WHERE r.sys_pk = @_entity_id
         ",params)
-        ref det = @@(data,"&detalle")
-
-        ref productos = list.create()
-        for i = 0; i < list.count(det)
-        {
-            ref o = list.obj(det,i)
-            entregar = @@(o,"#entregar")
-            
-            if entregar > 0
-            {
-                o<"entregar"> : entregar
-                new p
-                {
-                    @"sys_pk": @@(o,"#iproducto")
-                    @"costoultimo": @@(o,"#costoultimo")
-                    @"cantidad": entregar
-                }
-                do list.add(productos,p)
-                
-                // Actualizar cantidad surtida por cada producto en el detalle de la requisición
-                sql_up_surtido = "
-                update dcmpreq set
-                    surtido = (ifnull(surtido,0) + @entregar)
-                where
-                    sys_pk = @idetalle
-                    and (ifnull(surtido,0) + @entregar) <= @faltante
-                "
-                if not(dbr.execute(db,sql_up_surtido,o)) {
-                    do rise_error(511,"Detalle de requisición no encontrado o la cantidad a entregar es mayor al faltante.")
-                }
-            }
-        }
-        if list.count(productos) < 1 { do rise_error(511,"¡No es posible continuar! Nada por procesar.") }
 
         transfer_mode = parse.num(dbr.vars.getd(db,"cmpreq_transfer_mode","1"))
         params<"catinv"> : dbr.vars.getd(db,"cmpreq_catinv_para_surtir","SR")
@@ -1204,12 +1221,6 @@ module "Requisiciones :req"
             referencia = referencia +"/"+ str(consecutive + 1)
         }
 
-        // Preparar la carga útil y encabezados para la petición de transferencia
-        new header
-        {
-            @"Content-Type": "application/json; charset=utf-8"
-            @"Authorization": "Bearer "+@@(@http_context,"$session/user/ids")
-        }
         new payload
         {
             @"tipo_movimiento": "traspaso"
@@ -1225,28 +1236,69 @@ module "Requisiciones :req"
             @"_productos*": productos
         }
 
+        return payload
+    }
+    //#region stock.linkDcardex
+    stock.linkDcardex::&db,&data,&resp
+    {
+        ref details = @@(data,"&detalle")
+        icardex = @@(resp,"$sys_pk")
+        
+        for i = 0; i < list.count(details)
+        {
+            ref d = list.obj(details,i)
+            if @@(d,"#entregar") > 0
+            {
+                d<"icardex"> : icardex
+
+                do dbr.execute(db,"
+                    INSERT INTO dcmpreq_surtido (detalle,movimiento)
+                    SELECT
+                        @idetalle AS detalle,
+                        d.sys_pk AS movimiento
+                    FROM dcardex d
+                        INNER JOIN cardex c ON d.fk_cardex_movimientos = c.sys_pk
+                    WHERE
+                        c.sys_pk = @icardex
+                        AND d.iproducto = @iproducto
+                        AND IFNULL(d.salidas,0) > 0
+                ",d)
+            }
+        }
+    }
+    //#region stock()
+    stock::&db,&params,&data
+    {
+        @use_transaction = @false
+        @just_read_entity = @true
+
+        do dbr.apps.action.pre("TD1C")
+        do dbr.begin(db)
+
+        // Preparar carga útil y encabezados para la petición de transferencia
+        new header
+        {
+            @"Content-Type": "application/json; charset=utf-8"
+            @"Authorization": "Bearer "+@@(@http_context,"$session/user/ids")
+        }
+        ref payload = stock.payload(db,params,data)
+
+        do dbr.apps.action.pos(payload)
+        // Realizar petición de transferencia
         endpoint = path.concat(lib.base_url(@false),@URL_NEW_MOVINV)
         response = http.request(endpoint,"POST",header,to.json(payload))
         ref resp = from.json(response)
-        
-        if field.exist(resp,"message") { do rise_error(500,@@(resp,"$message")) }
-        // Vincular dcardex por cada producto en el detalle de la requisición
-        for i = 0; i < list.count(det)
-        {
-            ref o = list.obj(det,i)
-            o<"referencia"> : referencia
-            o<"movimiento"> : dbr.num(db,"select d.sys_pk from dcardex d inner join cardex c on d.fk_cardex_movimientos=c.sys_pk where c.referencia=@referencia and d.iproducto=@iproducto and ifnull(d.salidas,0) > 0;",o)
-            do dbr.execute(db,"insert into dcmpreq_surtido (detalle,movimiento) value (@idetalle,@movimiento)",o)
-        }
 
-        do dbr.apps.action.pos(resp)
+        if field.exist(resp,"message") { do rise_error(500,@@(resp,"$message")) }
         do dbr.commit(db)
+        // Vincular dcardex por cada producto en el detalle de la requisición
+        do stock.linkDcardex(db,data,resp)
         do dbr.apps.action.ext(resp)
 
         new r
         {
             @"message": "Proceso completado"
-            @"url_redir": @CMP_REQUISICION
+            @"url_redir": path.concat(@CMP_REQUISICION,@@(params,"$_entity_id")+"/")
         }
         return r
 

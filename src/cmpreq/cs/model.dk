@@ -1,0 +1,78 @@
+#include "dkli.dkh"
+#!
+module "Centros de Surtido :cs"
+{
+    function buscarCentroConsumo(&db,&params)
+    {
+        return dbr.list(db,"
+            SELECT sys_pk, codigo, descripcion, notas, ialmacen
+            FROM cconsumo
+            WHERE
+                NOT IFNULL(sys_deleted,0)
+                AND (
+                    @search = '*' OR CONVERT(@search,DECIMAL) = -1
+                    OR codigo = @search
+                    OR descripcion LIKE CONCAT('%',@search,'%')
+                )
+            ORDER BY codigo
+        ",params)
+    }
+
+    function list(&db,&params)
+    {
+        if @@(params,"$action") == "buscar-cconsumo" { return buscarCentroConsumo(db,params) }
+
+        do dbr.apps.action.grant("TD60")
+        return dbr.list(db,ftext("
+            SELECT
+                cc.sys_pk,
+                cc.codigo,
+                cc.descripcion
+            FROM cmpreq_cc cs
+                INNER JOIN cconsumo cc ON cs.cc = cc.sys_pk
+            LIMIT #<@default_max_rows>
+        "),params)
+        exception{ do catch(db,params,@null) }
+    }
+
+    function create(&db,&params,&data)
+    {
+        do dbr.apps.action.grant("TD61")
+        do dbr.execute(db,"INSERT INTO cmpreq_cc (cc) VALUES (@sys_pk)",data)
+        return dbr.rec(db,"
+            SELECT
+                cc.sys_pk,
+                cc.codigo,
+                cc.descripcion
+            FROM cmpreq_cc cs
+                INNER JOIN cconsumo cc ON cs.cc = cc.sys_pk
+            WHERE cs.cc = @sys_pk
+        ",data)
+    }
+
+    function delete(&db,&params)
+    {
+        do dbr.apps.action.grant("TD62")
+        do dbr.execute(db,"DELETE FROM cmpreq_cc WHERE cc = @_entity_id",params)
+        return @null
+    }
+
+    NotImplemented1::&db,&params
+    {
+        do rise_error(500,"Acción no implementada")
+    }
+    NotImplemented2::&db,&params,&data
+    {
+        do rise_error(500,"Acción no implementada")
+    }
+
+    @list_view = "list.dk"
+    @form_view = "list.dk"
+
+    point @list to cs.list
+    point @read to cs.list
+    point @blank to cs.list
+    point @create to cs.create
+    point @update to cs.NotImplemented2
+    point @delete to cs.delete
+}

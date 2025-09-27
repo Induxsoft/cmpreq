@@ -1,0 +1,118 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
+
+    do @context.begin(@crud_context)
+
+    table_id = @("$parameters/_entities_type")
+    
+    new nav_config
+    {
+        @"title": "Centros de surtido"
+        @"urlexit": @CMP_REQUISICION
+
+        member "hidden"
+        {
+            @"print":@true
+            @"send":@true
+            @"copy":@true
+            @"csv":@true
+        }
+    }
+    new table_definition
+    {
+        @"datatable*": @("&.")
+        member @"columns"
+        {
+            member @"codigo" { @"caption": "Código" }
+            member @"descripcion" { @"caption": "Descripción" }
+            member @"_actions" 
+            {
+                @"caption":"Acciones"
+                @"no-print":@true
+                @"template":ftext('
+                <div style="display:flex;gap:8px;justify-content:center;width:100%;" class="no-print">
+                    <button onclick="InduxsoftCrudlModel.Delete(${DataRow.sys_pk})" style="cursor:pointer;">Eliminar</button>
+                </div>
+                ')
+            }
+        }
+        @"table_footer": "Mostrando los primeros # registros"
+    }
+    
+    #$
+    div(class="container" id="view")
+    {
+        section(id="top_area")
+        {
+            #!
+            do uie.printV12FormBar(nav_config)
+            #$
+
+            div(class="row align-items-center gx-0 gy-1 mb-1")
+            {
+                div(class="col")
+                {
+                    "input-key"(id="ik-cconsumo" "data-key"="sys_pk" "data-search"="codigo" "data-text"="descripcion" "data-source"="#<@URL_BUSCAR_CCONSUMO>" columns="codigo,descripcion" colcaptions="Código,Descripción" "hidden-input"="false"){""}
+                }
+                div(class="col-auto text-end")
+                {
+                    button(class="btn btn-main-action border induxsoft-corners no-shadow" type="button" id="btn-add"){"Agregar"}
+                }
+            }
+        }
+        section(id="work_area")
+        {
+            #!
+            do uie.dbeditable(table_definition,table_id)
+            #$
+        }
+        section(id="bottom_area")
+        {
+            script(type="text/javascript")
+            {$'
+                document.addEventListener("DOMContentLoaded", () => {
+                    const table = document.getElementById("#<table_id>");
+                    const ik_cconsumo = document.getElementById("ik-cconsumo");
+                    const btn_add = document.getElementById("btn-add");
+
+                    btn_add.addEventListener("click", () => {
+                        const data = ik_cconsumo.getValue();
+                        if ((data?.sys_pk??0) < 1) return;
+                        btn_add.disabled = true;
+
+                        InduxsoftCrudlModel.InvokeService(".",data,
+                            (resp) => {
+                                btn_add.disabled = false;
+                                btn_add.blur();
+
+                                if (table.DataArray.length < 1) window.location.reload();
+                                else
+                                {
+                                    table.DataArray.push(resp);
+                                    table._printRows();
+                                    ik_cconsumo.clear();
+                                }
+                            },
+                            (error) => {
+                                if (error.message) alert(error.message);
+                                else console.error(error);
+                                
+                                btn_add.disabled = false;
+                                btn_add.blur();
+                            },
+                            "POST", false
+                        );
+                    });
+                });
+            '}
+        }
+    }
+    #!
+    do @context.end()
+}

@@ -1,6 +1,6 @@
 #include "dkli.dkh"
 #!
-module ""
+module "Consolidaciones :con"
 {
     @table_name = "cmpreq"
     @sys_fields = "sys_pk,sys_guid,sys_dtcreated,sys_timestamp,sys_info,sys_user,sys_lastuser,sys_exported,sys_dtexported,sys_recver,sys_deleted,sys_lock"
@@ -23,19 +23,19 @@ module ""
         {
             conditions = "OR (
                 NOT IFNULL(req.sys_deleted,0)
-                AND NOT IFNULL(req.consolidacion,0)
                 AND req.en = @idcon
             )"
         }
         if trim(@@(params,"$search")) != ""
         {
-            conditions = "OR (
+            conditions = ftext("OR (
                 NOT IFNULL(req.sys_deleted,0)
                 AND NOT IFNULL(req.consolidacion,0)
                 AND req.en IS NULL
-                AND req.`status` = 10
-                AND (req.referencia = @search OR pda.partida LIKE CONCAT('%',@search,'%'))
-            )"
+                AND req.`status` = #<@stt_req_aprobado>
+                AND (req.cc IS NULL OR req.cc = @icconsumo)
+                AND (req.referencia LIKE CONCAT('%',@search,'%') OR pda.partida LIKE CONCAT('%',@search,'%'))
+            )")
         }
 
         return dbr.list(db,ftext(@qry_cmpreq),params)
@@ -78,7 +78,7 @@ module ""
         }
     }
 
-    con.list::&db,&params
+    list::&db,&params
     {
         new data
         {
@@ -88,8 +88,11 @@ module ""
         return data
     }
 
-    con.read::&db,&params
+    read::&db,&params
     {
+        if not(isset("@just_read_entity")) { @just_read_entity = @false }
+        if @just_read_entity { return entity.read(db,params) }
+
         new data
         {
             @"cmpcon*": entity.read(db,params)
@@ -99,7 +102,7 @@ module ""
         return data
     }
 
-    con.blank::&db,&params
+    blank::&db,&params
     {
         new data {}
         do prepareView(db,params,data)
@@ -107,9 +110,10 @@ module ""
         return data
     }
 
-    con.create::&db,&params,&data
+    create::&db,&params,&data
     {
         @use_transaction = @false
+        @just_read_entity = @true
         
         serie = trim(@@(data,"$serie"))
         folio = abs(@@(data,"#folio"))
@@ -149,7 +153,7 @@ module ""
         if @@(cmpcon,"#status") < 0 { cmpcon<"status"> : @stt_req_borrador }
         if @@(cmpcon,"$flimite") == "" { do field.remove(cmpcon,"flimite") }
         
-        ref entity = @@(entity.create(db,params,cmpcon),"&cmpcon")
+        ref entity = entity.create(db,params,cmpcon)
 
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
@@ -176,16 +180,16 @@ module ""
         }
     }
 
-    con.update::&db,&params,&data
+    update::&db,&params,&data
     {
         @use_transaction = @false
+        @just_read_entity = @true
 
         do dbr.apps.action.pre("TD22")
         do dbr.begin(db)
 
         new cmpcon
         {
-            @"sys_timestamp*": now()
             @"sys_lastuser": @@(@http_context, "$session/user/uid")
             @"sys_recver": @@(data,"#sys_recver")
 
@@ -198,21 +202,26 @@ module ""
         }
 
         if @@(cmpcon,"$flimite") == "" { do field.remove(cmpcon,"flimite") }
+
         new args
         {
-            @"conId": trim(@@(params,"$_entity_id"))
+            @"conId": @@(params,"$_entity_id")
             @"reqsId": trim(@@(data,"$_requisiciones"))
         }
-        
         do dbr.execute(db,"UPDATE cmpreq SET en = NULL WHERE en = @conId",args)
-        // Agregar requisiciones directas a requisición consolidada
-        if @@(args,"$reqsId") != "" { do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN("+@@(args,"$reqsId")+")",args) }
+        if @@(args,"$reqsId") != ""
+        {
+            // Agregar requisiciones directas a requisición consolidada
+            do dbr.execute(db,"UPDATE cmpreq SET en = @conId WHERE sys_pk IN("+@@(args,"$reqsId")+")",args)
+            // Asegurar un mismo centro de surtido para las requisiciones del consolidado
+            do dbr.execute(db,"UPDATE cmpreq cn INNER JOIN cmpreq rq ON rq.en = cn.sys_pk SET rq.cc = cn.cc WHERE cn.sys_pk = @conId",args)
+        }
 
         ref tt = dbr.rec(db,"SELECT ROUND(SUM(subtotal),4) subtotal, ROUND(SUM(impuestos),4) impuestos FROM cmpreq WHERE en = @conId",args)
         cmpcon<"subtotal"> : @@(tt,"#subtotal")
         cmpcon<"impuestos"> : @@(tt,"#impuestos")
 
-        ref entity = @@(entity.update(db,params,cmpcon),"&cmpcon")
+        ref entity = entity.update(db,params,cmpcon)
         
         do dbr.apps.action.pos(entity)
         do dbr.commit(db)
@@ -239,7 +248,7 @@ module ""
         }
     }
 
-    con.delete::&db,&params
+    delete::&db,&params
     {
         do rise_error(500,"Acción no implementada")
     }

@@ -28,3 +28,7 @@ TD50,Unidades-Almacenes,cmpreq.unialm
 TD51,Vincular almacen a unidad organizacional,cmpreq.unialm
 TD52,Editar almacén vinculado a unidad organizacional,cmpreq.unialm
 TD53,Eliminar almacén vinculado a unidad organizacional,cmpreq.unialm
+cmpreq.cs,Centros de surtido,cmpreq
+TD60,Centros de surtido,cmpreq.cs
+TD61,Agregar centro de surtido,cmpreq.cs
+TD62,Remover centro de surtido,cmpreq.cs

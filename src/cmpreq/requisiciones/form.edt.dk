@@ -23,15 +23,18 @@ module "form.edt.dk"
         return
     }
 
-    @curr_status = @@(cmpreq,"#status")
-    @show_btn_xaprobar = (@curr_status == @stt_req_borrador)
-    @show_btn_aprobar = (@curr_status == @stt_req_xaprobar)
-    @show_btn_nproceso = (@curr_status == @stt_req_aprobado)
-    @show_btn_cancelar = isanyword(@curr_status, "0,1,10,20")
-    // (@@(cmpreq,"#tipo")!=@type_req_consl && @@(cmpreq,"#en") < 1) || (@@(cmpreq,"#tipo")==@type_req_consl && @curr_status==@stt_req_aprobado)
-    @show_btn_aprovisionar = (@@(cmpreq,"#en") < 1 && @curr_status==@stt_req_aprobado)
-    @show_btn_surtir = @@(cmpreq,"#tipo")!=@type_req_consl && (@curr_status==@stt_req_aprobado || @curr_status==@stt_req_completado || @@(cmpreq,"#en")>0)
-    @enable_editing = (@curr_status==@stt_req_borrador || @curr_status==@stt_req_xaprobar)
+    @tipo = @@(cmpreq,"#tipo")
+    @status = @@(cmpreq,"#status")
+    @enable_editing = (@status==@stt_req_borrador || @status==@stt_req_xaprobar)
+    @show_btn_xaprobar = (@status == @stt_req_borrador)
+    @show_btn_aprobar = (@status == @stt_req_xaprobar)
+    @show_btn_nproceso = (@status == @stt_req_aprobado)
+    // ["Borrador", "Por Aprobar", "Aprobado", "En proceso"]
+    @show_btn_cancelar = isanyword(@status,"0,1,10,20")
+    // Requisiciones directas [1,2,3] no consolidadas y consolidaciones aprobadas
+    @show_btn_aprovisionar = @tipo!=@type_req_sup && (@@(cmpreq,"#en") < 1 && @status==@stt_req_aprobado)
+    // Requisiciones directas [1,2,3] aprobadas, completadas, o consolidadas
+    @show_btn_surtir = not(isanyword(@tipo,"4,10")) && (@status==@stt_req_aprobado || @status==@stt_req_completado || @@(cmpreq,"#en")>0)
 
     in_consol = (@@(cmpreq,"#en") > 0)
     if in_consol 
@@ -44,18 +47,8 @@ module "form.edt.dk"
     }
 
     // ["En proceso", "Completa", "Incompleta"]
-    if containsword(@curr_status, "20,30,31") && not(in_consol) {
-        endpoint = replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
-        /* new context
-        {
-            @"entity*": cmpreq
-            @"detail*": dcmpreq
-        }
-        jsonContext = to.json(context)
-        jsonContext = url_encode(jsonContext)
-        endpoint = path.concat(endpoint,ftext("?_context=#<jsonContext>")) */
-
-        @http_context<"response/headers/location"> : endpoint
+    if isanyword(@status,"20,30,31") && not(in_consol) {
+        @http_context<"response/headers/location"> : replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
         return
     }
 
@@ -71,7 +64,7 @@ module "form.edt.dk"
         if @@(itm,"#id") == @@(cmpreq,'#periodo') { periodo = @@(itm,"$const") }
     }
 
-    header_act::
+    printNavButtons::
     {
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
         url_aprovisionar = replace(@CMP_APROVISIONAR,"{ireq}",@_entity_id)
@@ -87,13 +80,20 @@ module "form.edt.dk"
 
         if @enable_editing {#$ button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"} #!}
     }
-    point general_act to header_act
+    point buttons to printNavButtons
     new nav_config
     {
         @"title": @@(cmpreq,"$referencia") + " ["+@@(cmpreq,"$cstatus")+"]"
-        @"buttons*": general_act
+        @"buttons*": buttons
         @"urlexit": "../"
-        member @"hidden" { @"print": @true }
+
+        member @"hidden"
+        {
+            @"copy": @true
+            @"csv": @true
+            @"print": @true
+            @"send": @false
+        }
     }
 
     #$
@@ -113,77 +113,21 @@ module "form.edt.dk"
                 input(type="hidden" name="sys_pk" value="#<@@(cmpreq,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpreq, '#sys_recver')>")
 
-                div(class="row mb-2")
-                {
-                    div(class="col-12 col-md-4 d-md-flex align-items-center justify-content-md-start gap-1")
-                    {
-                        h6(class="my-0"){"Tipo:"}
-                        p(class="my-0"){"#<@@(cmpreq,'$ctipo')>"}
-                    }
-                    div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-end gap-1")
-                    {
-                        h6(class="my-0"){"Unidad Organizacional:"}
-                        p(class="my-0"){"#<@@(cmpreq,'$unidad_org')>"}
-                    }
-                    div(class="col-3 col-md-2 d-md-flex align-items-center justify-content-md-start gap-1")
-                    {
-                        h6(class="my-0"){"Ejercicio:"}
-                        p(class="my-0"){"#<@@(cmpreq,'$ejercicio')>"}
-                    }
-                    div(class="col-9 col-md-8 d-md-flex align-items-center justify-content-md-center gap-1")
-                    {
-                        h6(class="my-0"){"Partida Presupuestal:"}
-                        p(class="my-0"){"#<@@(cmpreq,'$partida_pre')>"}
-                    }
-                    div(class="col-3 col-md-2 d-md-flex align-items-center justify-content-md-end gap-1")
-                    {
-                        h6(class="my-0"){"Periodo:"}
-                        p(class="my-0"){"#<periodo>"}
-                    }
-                }
-
-                div(class="row gx-2")
-                {
-                    div(class="col-6 col-sm-3 col-md-2")
-                    {
-                        label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
-                        input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpreq)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
-                    }
-                    div(class="col-6 col-sm-3 col-md-2")
-                    {
-                        label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
-                        input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpreq)>" id="txt_flimite" title="Fecha y hora límite para completarla")
-                    }
-                    div(class="col-8 col-sm-6 col-md-4")
-                    {
-                        label(class="form-label" "for"="txt_divisa"){$"Divisa:"}
-                        input(class="form-control form-control-sm rounded-0" type="text" value="#<@@(cmpreq,'$ddivisa')>" id="txt_divisa" "data-codigo"="#<@@(cmpreq,'$cdivisa')>" disabled="")
-                    }
-                    div(class="col-4 col-sm-3 col-md-2")
-                    {
-                        label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}
-                        input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpreq)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
-                    }
-
-                    div(class="col-12" id="cmpreq_status_control"){$""}
-                }
-
-                label(class="form-label" "for"="txt_notas"){$"Notas:"}
-                textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',cmpreq)>"}
+                ##
+                #include "./main.readonly.info.dk"
+                ##
 
                 input(type="hidden" name="_detalle" value="" id="txt_detalle")
             }
 
-            div(class="d-flex justify-content-end align-items-center border-top gap-1 px-2 my-2" id="tbl_action_bar")
+            div(class="d-flex justify-content-end align-items-center border-top gap-1 px-2" id="tbl_action_bar")
             {
                 small(class="flex-grow-1 text-muted"){$"Seleccione los productos en la cuadrícula"}
 
                 button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow" type="button" id="btn-add-row" title="Agregar fila"){$"#<@ICON_ADD_ROW>"}
                 button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow" type="button" id="btn-del-row" title="Eliminar fila"){$"#<@ICON_REMOVE_ROW>"}
             }
-
             div(class="alert alert-danger rounded-0 mb-1 py-0 d-none" role="alert" id="tbl_alerts"){$""}
-
             div(class="" id="div_tbl_productos" style="width:auto; min-width:100%; max-height:55vh; display:flex;")
             {
                 "edit-table"(id="tbl_productos" data="#<to.json(dcmpreq)>" "auto-confirm"="true" style="width:100%;"

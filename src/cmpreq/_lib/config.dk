@@ -77,9 +77,10 @@ module
 	@URL_BUSCAR_PARTIDA_PRE = "/!/cmpreq/requisiciones/?_view=buscar-partida-pre&search=@search"
 	@URL_BUSCAR_PRODUCTO = "/!/cmpreq/requisiciones/?_view=buscar-producto&search=@search"
 	@URL_BUSCAR_CPRODUCCION = "/!/cmpreq/requisiciones/?_view=buscar-cproduccion&icconsumo=@icconsumo&iproducto=@iproducto&search=@search"
-	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&search=@search"
+	@URL_BUSCAR_REQUISICION = "/!/cmpreq/consolidados/?_view=buscar-requisicion&icconsumo=@icconsumo&search=@search"
 	@URL_BUSCAR_PROVEEDOR = "/!/cmpreq/solcot/?_view=buscar-proveedor&search=@search"
 	@URL_BUSCAR_COTIZACION = "/!/cmpreq/solcot/?_view=buscar-cotizacion&search=@search"
+	@URL_BUSCAR_CCONSUMO = "/!/cmpreq/cs/?action=buscar-cconsumo&search=@search"
 	@URL_BUSCAR_ALMACEN = "/!/cmpreq/unialm/?action=buscar-almacen&s=@search"
 	@URL_OBTENER_UNIALM = "/!/cmpreq/unialm/?action=buscar-almacen&u=@unidad"
 	@URL_OBTENER_FULTIMO = "/!/cmpreq/requisiciones/{iblock}/obtener-fultimo/"
@@ -99,6 +100,8 @@ module
 	@CMP_SOLCOT = "/!/cmpreq/solcot/"
 	@CMP_IN_PROCESS = "/!/cmpreq/solcot/{ireq}/cmp-in-process/"
 	@CMP_CC = "/!/cmpreq/solcot/{ireq}/cc/"
+	@CMP_ALMACENES = "/!/cmpreq/unialm/"
+	@CMP_CENTROS_SURTIDO = "/!/cmpreq/cs/"
 
 	//* ======================================== [ AUTHORIZATIONS ]
 }

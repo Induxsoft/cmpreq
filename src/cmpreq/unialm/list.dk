@@ -5,6 +5,7 @@ module "list.dk"
     #include "functions.dkh"
     #include "serialize.dkh"
     #include "uielements.v12.dkl"
+    #include "../_lib/config.dk"
 
     do @context.begin(@crud_context)
 
@@ -29,7 +30,7 @@ module "list.dk"
     new nav_config
     {
         @"title": "Almacenes de unidades organizacionales"
-        @"urlexit": "/"
+        @"urlexit": @CMP_REQUISICION
         @"print_mode": 0 // 0-window.print() | 1-v12PrintHTML()
         @"actions*": ifnull(@("&./itemactions"),list.create())
         @"reports*": ifnull(@("&./itemreports"),list.create())

@@ -17,34 +17,15 @@ module "form.dk"
 
 	@_entities_type = @("$parameters/_entities_type")
 	@_entity_id = @("$parameters/_entity_id")
+    @status = @@(cmpcon,"#status")
 
     if not(@@(cmpcon,"#consolidacion")) {
         @http_context<"response/headers/location"> : path.concat(@CMP_REQUISICION,@_entity_id)+"/"
         return
     }
-
-    @curr_status = @@(cmpcon,"#status")
-    @show_btn_xaprobar = (@curr_status == @stt_req_borrador)
-    @show_btn_aprobar = (@curr_status == @stt_req_xaprobar)
-    @show_btn_nproceso = (@curr_status == @stt_req_aprobado)
-    @show_btn_cancelar = containsword(@curr_status, "0,1,10,20")
-    @enable_editing = (@curr_status == @stt_req_borrador || @curr_status == @stt_req_xaprobar)
-
-    empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
-
     // ["En proceso", "Completa", "Incompleta"]
-    if containsword(@curr_status, "20,30,31") {
-        endpoint = replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
-        /* new context
-        {
-            @"entity*": cmpcon
-            @"detail*": dcmpcon
-        }
-        jsonContext = to.json(context)
-        jsonContext = url_encode(jsonContext)
-        endpoint = path.concat(endpoint,ftext("?_context=#<jsonContext>")) */
-
-        @http_context<"response/headers/location"> : endpoint
+    if isanyword(@status,"20,30,31") {
+        @http_context<"response/headers/location"> : replace(@CMP_IN_PROCESS,"{ireq}",@_entity_id)
         return
     }
 
@@ -54,10 +35,23 @@ module "form.dk"
     }
     do lib.AutoFillRows(dcmpcon,10)
 
-    header_act::
+    @enable_editing = (@status == @stt_req_borrador || @status == @stt_req_xaprobar)
+    @show_btn_xaprobar = (@status == @stt_req_borrador)
+    @show_btn_aprobar = (@status == @stt_req_xaprobar)
+    @show_btn_nproceso = (@status == @stt_req_aprobado)
+    // ["Borrador", "Por Aprobar", "Aprobado", "En proceso"]
+    @show_btn_cancelar = isanyword(@status,"0,1,10,20")
+    @show_btn_aprovisionar = (@status == @stt_req_aprobado)
+
+    empty_rows = "[{},{},{},{},{},{},{},{},{},{}]"
+    @URL_BUSCAR_REQUISICION = replace(@URL_BUSCAR_REQUISICION,"@icconsumo",@@(cmpcon,"#cc"))
+
+    printNavButtons::
     {
         btn_cls = "btn btn-sm border-secondary induxsoft-corners btn-main-action no-print"
+        url_aprovisionar = replace(@CMP_APROVISIONAR,"{ireq}",@_entity_id)
 
+        if @show_btn_aprovisionar {#$ a(href="#<url_aprovisionar>" class="#<btn_cls>"){$"Aprovisionar"} #!}
         if @show_btn_nproceso {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_nproceso>" title="Cambiar estado"){$"Adquirir"} #!}
 
         if @show_btn_xaprobar {#$ button(class="#<btn_cls> btn-status" type="button" "data-status"="#<@stt_req_xaprobar>" title="Cambiar estado"){$"#<@ICON_HOURGLASS> Por Aprobar"} #!}
@@ -66,15 +60,20 @@ module "form.dk"
 
         if @enable_editing {#$ button(class="#<btn_cls>" type="button" id="btn_submit"){$"#<@ICON_SAVE>"} #! }
     }
-
-    point general_act to header_act
-
+    point buttons to printNavButtons
     new nav_config
     {
-        @"title": @@(cmpcon,"$referencia")
-        @"buttons*": general_act
+        @"title": @@(cmpcon,"$referencia") + " ["+@@(cmpcon,"$cstatus")+"]"
+        @"buttons*": buttons
         @"urlexit": @CMP_REQUISICION
-        member @"hidden" { @"print": @true }
+        
+        member @"hidden"
+        {
+            @"copy": @true
+            @"csv": @true
+            @"print": @true
+            @"send": @false
+        }
     }
 
     #$
@@ -94,35 +93,9 @@ module "form.dk"
                 input(type="hidden" name="sys_pk" value="#<@@(cmpcon,'#sys_pk')>")
                 input(type="hidden" name="sys_recver" value="#<@@(cmpcon, '#sys_recver')>")
 
-                div(class="row gx-2")
-                {
-                    div(class="col-lg-2 col-md-3 col-sm-6")
-                    {
-                        label(class="form-label" "for"="txt_fecha"){$"Elaboración:"}
-                        input(class="form-control form-control-sm rounded-0" type="date" name="fecha" value="#<lib.form('fecha','dt',cmpcon)>" id="txt_fecha" required="" title="Fecha formal de elaboración")
-                    }
-
-                    div(class="col-lg-2 col-md-3 col-sm-6")
-                    {
-                        label(class="form-label" "for"="txt_flimite"){$"Vencimiento:"}
-                        input(class="form-control form-control-sm rounded-0" type="date" name="flimite" value="#<lib.form('flimite','dt',cmpcon)>" id="txt_flimite" title="Fecha y hora límite para completarla")
-                    }
-
-                    div(class="col-lg-2 col-md-3 col-sm-6")
-                    {
-                        label(class="form-label" "for"="txt_divisa"){$"Divisa:"}
-                        input(class="form-control form-control-sm rounded-0" type="text" value="#<@@(cmpcon,'$ddivisa')>" id="txt_divisa" "data-codigo"="#<@@(cmpcon,'$cdivisa')>" disabled="")
-                    }
-
-                    div(class="col-lg-2 col-md-3 col-sm-6")
-                    {
-                        label(class="form-label" "for"="txt_tcambio"){$"T.Cambio:"}
-                        input(class="form-control form-control-sm rounded-0 induxsoft-num-field mw-100" type="number" name="tcambio" value="#<lib.form('tcambio','nm',cmpcon)>" id="txt_tcambio" min="1" max="999999.999999" step="0.000001" required="" "num-decs"="6")
-                    }
-                }
-
-                label(class="form-label" "for"="txt_notas"){$"Notas:"}
-                textarea(class="form-control rounded-0" name="notas" id="txt_notas" maxlength="32000"){$"#<lib.form('notas','tx',cmpcon)>"}
+                ##
+                #include "../requisiciones/main.readonly.info.dk"
+                ##
 
                 input(type="hidden" name="_requisiciones" value="" id="txt_requisiciones")
                 input(type="hidden" name="_detalle" value="" id="txt_detalle")
@@ -132,7 +105,7 @@ module "form.dk"
 
             nav(class="mt-2")
             {
-                div(class="nav nav-tabs mb-2" id="nav-tab" role="tablist")
+                div(class="nav nav-tabs" id="nav-tab" role="tablist")
                 {
                     button(class="nav-link py-1 active" id="nav-requisiciones-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-requisiciones" type="button" role="tab" "aria-controls"="nav-requisiciones" "aria-selected"="true"){$"Requisiciones"}
                     button(class="nav-link py-1" id="nav-productos-tab" "data-bs-toggle"="tab" "data-bs-target"="#nav-productos" type="button" role="tab" "aria-controls"="nav-productos" "aria-selected"="false"){$"Productos"}
@@ -142,9 +115,9 @@ module "form.dk"
             {
                 div(class="tab-pane fade show active" id="nav-requisiciones" role="tabpanel" "aria-labelledby"="nav-requisiciones-tab")
                 {
-                    div(class="d-flex justify-content-end align-items-center gap-1 px-2 my-1" id="tbl_action_bar")
+                    div(class="d-flex justify-content-end align-items-center gap-1 px-2" id="tbl_action_bar")
                     {
-                        small(class="flex-grow-1 text-muted"){$""}
+                        small(class="flex-grow-1 text-muted"){"Agregue requisiciones a la consolidación..."}
 
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-add-req" title="Agregar requisición"){$"#<@ICON_DOCUMENT> Agregar"}
                         button(class="btn btn-sm d-flex align-items-center justify-content-center gap-2 no-shadow rounded-0" type="button" id="btn-rem-req" title="Remover requisición"){$"#<@ICON_FILE_DASH> Remover"}
@@ -225,7 +198,7 @@ module "form.dk"
 
         div
         {
-            "input-key"(id="ik_requisicion" "data-key"="sys_pk" "data-search"="referencia" "data-text"="partida" "data-source"="#<@URL_BUSCAR_REQUISICION>" columns="referencia,partida_pre,ejercicio,cdivisa" colcaptions="Referencia,Partida,Ejercicio,Divisa" "box-title-text"="Seleccione una requisición" "control-styles"="#container{display:none !important;}"){$""}
+            "input-key"(id="ik_requisicion" "data-key"="sys_pk" "data-search"="referencia" "data-text"="partida" "data-source"="#<@URL_BUSCAR_REQUISICION>" columns="referencia,ctipo,cdivisa,partida_pre,ejercicio" colcaptions="Referencia,Tipo,Divisa,Partida,Ejercicio" "box-title-text"="Seleccione una requisición" "control-styles"="#container{display:none !important;}"){$""}
         }
 
         #$
@@ -242,7 +215,6 @@ module "form.dk"
                 consolidados.edit.tblReqId = "tbl_requisiciones";
                 consolidados.edit.tblProdId = "tbl_productos";
                 consolidados.edit.init();
-                InduxsoftNumberFields.Init();
             });
 		'}
     }

@@ -87,58 +87,30 @@ module "Funciones de propósito general:lib"
 
     function form(name,type,&obj)
     {
+        if isnull(obj) { ref obj:record.create() }
         name = trim(str(name))
-        if isnull(obj) { new obj {} }
-
-        switch str(type)
+        type = trim(str(type))
+        
+        if isanyword(type,"nm,num,number")
         {
-            case "tx"
-            {
-                text = trim(@("$./form/"+name))
-                if text == "" { text = trim(@("$input/"+name)) }
-                if text == "" { text = trim(@@(obj,"$"+name)) }
-                return text
-            }
-            case "nm"
-            {
-                value = @("#./form/"+name)
-                if value <= 0 { value = @("#input/"+name) }
-                if value <= 0 { value = @@(obj,"#"+name) }
-                return value
-            }
-            case "ch"
-            {
-                bool = trim(@("$./form/"+name))
-                if bool == "" { bool = trim(@("$input/"+name)) }
-                if bool == "" { bool = trim(@@(obj,"$"+name)) }
-                
-                return ifstr(parse.bool(bool),"checked","")
-            }
-            case "rd"
-            {
-                bool = trim(@("$./form/"+name))
-                if bool == "" { bool = trim(@("$input/"+name)) }
-                if bool == "" { bool = trim(@@(obj,"$"+name)) }
-                
-                return ifstr(parse.bool(bool),"checked","")
-            }
-            case "dt"
-            {
-                fecha = trim(@("$./form/"+name))
-                if fecha == "" { fecha = trim(@("$input/"+name)) }
-                if fecha == "" { fecha = trim(@@(obj,"$"+name)) }
-                if fecha == "" { fecha = date_str(now(),"yyyy-MM-dd") }
-                return fecha
-            }
-            case "dtm"
-            {
-                fecha = trim(@("$./form/"+name))
-                if fecha == "" { fecha = trim(@("$input/"+name)) }
-                if fecha == "" { fecha = trim(@@(obj,"$"+name)) }
-                if fecha == "" { fecha = date_str(now(),"yyyy-MM-dd HH:mm:ss") }
-                return fecha
-            }
-            default { return "" }
+            value = @("#./form/"+name)
+            if value == 0 { value = @("#input/"+name) }
+            if value == 0 { value = @@(obj,"#"+name) }
+            return value
+        }
+        else if isanyword(type,"rd,rdb,ch,chk")
+        {
+            bool = trim(@("$./form/"+name))
+            if bool == "" { bool = trim(@("$input/"+name)) }
+            if bool == "" { bool = trim(@@(obj,"$"+name)) }
+            return ifstr(parse.bool(bool),"checked","")
+        }
+        else
+        {
+            value = trim(@("$./form/"+name))
+            if value == "" { value = trim(@("$input/"+name)) }
+            if value == "" { value = trim(@@(obj,"$"+name)) }
+            return value
         }
     }
 

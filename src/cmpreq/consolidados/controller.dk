@@ -1,17 +1,20 @@
 #include "dkli.dkh"
 #!
-module ""
+module "ConsolidacionesController"
 {
+    point @delete to con.delete
+
     switch @@(@http_context,"$request/get/_view")
     {
         case "buscar-requisicion"
         {
-            point @list to buscarRequisicion
+            point @list to con.buscarRequisicion
             break
         }
         case "obtener-productos"
         {
-            point @read to obtenerProductos
+            point @read to con.obtenerProductos
+            break
         }
         default
         {
@@ -19,11 +22,11 @@ module ""
 
             if @@(@http_context,"$request/get/_entity_id") != "_new" { @form_view = "form.edt.dk" }
 
+            point @list to con.list
             point @read to con.read
             point @blank to con.blank
             point @create to con.create
             point @update to con.update
-            point @delete to con.delete
             break
         }
     }

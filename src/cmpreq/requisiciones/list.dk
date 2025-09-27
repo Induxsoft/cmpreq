@@ -156,10 +156,20 @@ module "Requisiciones"
         }
     }
 
+    function printNavButtons()
+    {
+        cls = "btn btn-main-action btn-sm border-secondary induxsoft-corners no-shadow"
+
+        #$
+        a(href="#<@CMP_CENTROS_SURTIDO>" class="#<cls>"){"C. Surtido"}
+        a(href="#<@CMP_ALMACENES>" class="#<cls>"){"Almacenes"}
+        #!
+    }
+    point buttons to printNavButtons
     new nav_config
     {
         @"title": "Requisiciones"
-        @"buttons*": @null
+        @"buttons*": buttons
         @"urlexit": "/"
         @"main": "TD11,TD12"
         @"actions*": dbr.apps.itemactions(@('&database'),"DET070","action","",0)
